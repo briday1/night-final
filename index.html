@@ -32,8 +32,6 @@ button:focus-visible,a:focus-visible{outline:2px solid #ffdc9f;outline-offset:4p
 .look-controls button{min-width:70px}
 .look-controls button[data-alert]{color:#ffe5c2;border-color:#d88f78;box-shadow:inset 0 0 0 1px #84493e}
 .look-controls button:disabled{opacity:.55}
-.look-controls #act{position:absolute;right:0;bottom:49px;min-height:45px;background:#23211e;border-color:var(--course);color:var(--course);touch-action:none}
-.look-controls #act[data-held]{background:#57443c;color:#fff6e9}
 .cue,.caption,.trial{text-align:center;left:50%;transform:translateX(-50%);width:max-content;max-width:min(88%,650px);pointer-events:none}
 .cue{top:70px;padding:5px 9px;background:#0c1017dd;margin:0;border-left:2px solid var(--course);font-size:14px;color:#ffdbc0}
 .cue:empty{display:none}
@@ -121,6 +119,62 @@ button:focus-visible,a:focus-visible{outline:2px solid #ffdc9f;outline-offset:4p
   .overlay{padding-top:42px}.overlay[data-screen=title]{padding:22px 7vw}
 }
 @media(prefers-reduced-motion:reduce){.vignette{background:none}#stage.hit .vignette{background:#68241f40}}
+
+.pump-station,.bridge-control{position:absolute;z-index:3;left:50%;bottom:14px;transform:translateX(-50%);width:max-content;
+  max-width:calc(100% - 20px);color:#f1e2d1;text-align:center}
+.pump-station button,.bridge-control button{border:1px solid #8b7666;border-bottom:4px solid #3d2c31;border-radius:0;
+  background:#201c25;color:#f6e3cd;padding:8px 13px;min-height:42px;font-size:13px;font-weight:bold;text-transform:uppercase}
+.pump-station button{background:#52392b;color:#ffe3ae;border-color:#c3986a;border-bottom-color:#3c2726;min-width:150px}
+.pump-station button[data-stroking]{transform:translateY(3px);border-bottom-width:1px;background:#6b5136}
+.pump-station button[data-submerged]{background:#7b3c35;border-color:#f2ad83}
+.room-readout{margin:0 0 5px;padding:2px 8px;background:#10151ce8;color:var(--course);font-weight:bold;font-size:12px}
+#bridge-steps{display:flex;gap:5px;justify-content:center;margin-bottom:3px}
+#bridge-steps button[data-braced]{background:#4a3c30;color:#ffe1a1;border-color:#bd9668;border-bottom-color:#674c39}
+#bridge-steps button[data-wave=warning]{background:#674331;border-color:#eca26b;color:#fff0bb}
+#bridge-steps button[data-wave=washed]{background:#242837;border-color:#766b86;color:#c4b3c9;text-decoration:line-through}
+#bridge-steps button:disabled,#bridge-back:disabled{opacity:.42}
+#bridge-back{padding:3px 10px;min-height:32px;font-size:11px}
+#water-on-paper{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+#water-on-paper::after{position:absolute;content:"";inset:auto 0 0;height:var(--water);background:linear-gradient(#8ed2d48a,#174b679e);
+  border-top:3px solid #e5fbdf8f;box-shadow:0 -4px 12px #5ad8d65a}
+#root-web,#root-knots{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+#root-web{z-index:3;overflow:visible}
+#root-web path{fill:none;stroke:#825065;stroke-width:12;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:1;
+  filter:drop-shadow(2px 3px #392038)}
+#root-knots{z-index:4}
+.paper .root-knot{position:absolute;min-width:58px;height:55px;min-height:55px;border:2px solid #d69274;text-align:center;
+  color:#ffe7ae;background:#763f54;box-shadow:inset 0 0 0 4px #4c2939,3px 3px #352439;pointer-events:auto;
+  clip-path:polygon(18% 0,77% 0,100% 27%,100% 76%,78% 100%,22% 100%,0 73%,0 21%)}
+.paper .root-knot:hover,.paper .root-knot:focus-visible{background:#a95864;color:#fff2b9}
+.paper .root-knot.urgent{border-color:#ffe6ae;background:#a94d56;box-shadow:inset 0 0 0 4px #6b3349,0 0 9px #ecb78c}
+.root-knot:nth-child(1){top:10px;left:-23px}.root-knot:nth-child(2){top:10px;right:-23px}
+.root-knot:nth-child(3){bottom:20px;left:-23px}.root-knot:nth-child(4){bottom:20px;right:-23px}
+#circuit{background:repeating-linear-gradient(0deg,#0000 0 18px,#08080b21 19px),#2d2638;color:#f1d3b4;
+  border:3px solid #74536e;box-shadow:inset 0 0 0 4px #171623,0 7px #171522;padding:23px 27px 19px;
+  justify-content:space-between;align-items:center;gap:8px}
+#circuit .paper-head{align-self:stretch;color:#e6bda8;border-color:#87647b}
+#circuit-state{font-size:16px;text-align:center;margin:0;color:#e7c8b0}
+#circuit[data-powered] #circuit-state{color:#c5f2bd}
+.circuit-tray{position:relative;display:flex;align-items:center;justify-content:center;gap:8px}
+#circuit-grid{display:grid;grid-template-columns:repeat(3,84px);gap:2px;padding:4px;background:#191522;border:2px solid #836778}
+.circuit-end{position:absolute;display:grid;place-items:center;min-width:73px;color:#f2c6a9;background:#191522;border:2px solid #8e657d;
+  font-size:12px;text-transform:uppercase;font-weight:700;padding:8px 5px}
+.circuit-end.source{right:calc(100% - 1px);top:31px;border-right:2px solid #e2af77}
+.circuit-end.anchor{left:calc(100% - 1px);bottom:31px;border-left:2px solid #aa8bb6}
+#circuit[data-powered] .circuit-end.anchor{border-color:#d2e6a9;color:#d9efb8}
+#circuit-grid button{position:relative;aspect-ratio:1;display:grid;place-items:center;border:0;padding:0;min-height:0;
+  background:#493b50;color:#dcc3b5;box-shadow:inset 0 0 0 1px #6a5568}
+#circuit-grid button:hover,#circuit-grid button:focus-visible{background:#625166}
+#circuit-grid button[data-powered]{background:#50444c;color:#ffe9ac}
+#circuit-grid svg{width:100%;height:100%}
+#circuit-grid path{fill:none;stroke:#ad866e;stroke-width:6}
+#circuit-grid circle{fill:#8c705e}
+#circuit-grid [data-powered] path{stroke:#f7d491;filter:drop-shadow(0 0 3px #eaa575)}
+#circuit-grid [data-powered] circle{fill:#ffe2aa}
+#circuit-grid span{position:absolute;left:6px;top:3px;font-size:13px;font-weight:bold}
+.circuit-hint{margin:0;font-size:13px;color:#cfafbc}
+.circuit-hint.urgent{color:#ffac83;font-weight:bold}
+@media(max-width:650px){.pump-station,.bridge-control{bottom:7px}.room-readout{font-size:11px}}
 </style>
 </head>
 <body>
@@ -139,15 +193,50 @@ button:focus-visible,a:focus-visible{outline:2px solid #ffdc9f;outline-offset:4p
     <div class="answers" id="answers"></div>
     <div class="paper-foot"><span id="paper-status" role="status"></span><button id="next" type="button">Next</button></div>
     <progress id="writing" max="1" value="0" aria-label="Writing progress"></progress>
+    <div id="water-on-paper" aria-hidden="true" hidden></div>
+    <svg id="root-web" viewBox="0 0 540 464" aria-hidden="true" hidden>
+      <path pathLength="1" d="M6 38L55 61L62 97L126 122L106 155L209 182L193 217L327 245L381 296L451 309"/>
+      <path pathLength="1" d="M534 38L483 67L466 104L397 117L390 173L301 181L288 229L179 247L137 289L76 299"/>
+      <path pathLength="1" d="M6 410L68 383L78 345L146 328L149 290L227 283L243 248L347 219L419 181L477 160"/>
+      <path pathLength="1" d="M535 409L474 376L462 339L397 337L380 295L300 278L275 236L173 213L118 170L67 161"/>
+    </svg>
+    <div id="root-knots" hidden>
+      <button class="root-knot" type="button" aria-label="Cut the upper left root, Q" hidden>Q</button>
+      <button class="root-knot" type="button" aria-label="Cut the upper right root, E" hidden>E</button>
+      <button class="root-knot" type="button" aria-label="Cut the lower left root, Z" hidden>Z</button>
+      <button class="root-knot" type="button" aria-label="Cut the lower right root, C" hidden>C</button>
+    </div>
+  </section>
+  <section class="paper" id="circuit" aria-label="Desk tether circuit" hidden>
+    <div class="paper-head"><span>Desk tether · Junction plate</span><span id="circuit-count"></span></div>
+    <p id="circuit-state" role="status"></p>
+    <div class="circuit-tray">
+      <span class="circuit-end source">Source →</span>
+      <div id="circuit-grid" aria-label="Rotating circuit tiles">
+        <button type="button"></button><button type="button"></button><button type="button"></button>
+        <button type="button"></button><button type="button"></button><button type="button"></button>
+        <button type="button"></button><button type="button"></button><button type="button"></button>
+      </div>
+      <span class="circuit-end anchor">→ Anchor</span>
+    </div>
+    <p class="circuit-hint" id="circuit-hint">Tap tiles or use keys 1–9.</p>
   </section>
   <p class="cue" id="cue" role="status"></p>
+  <div class="pump-station" id="pump-station" hidden>
+    <p class="room-readout" id="water-gauge"></p><button id="pump" type="button">Pump handle · E</button>
+  </div>
+  <div class="bridge-control" id="bridge-control" hidden>
+    <p class="room-readout" id="bridge-progress"></p>
+    <div id="bridge-steps" aria-label="Step onto the next plank">
+      <button type="button">A · Left</button><button type="button">W · Center</button><button type="button">D · Right</button>
+    </div>
+    <button id="bridge-back" type="button">S · Step back</button>
+  </div>
   <nav class="look-controls" id="controls" aria-label="Look controls">
     <button type="button" data-view="left">← Window</button>
     <button type="button" data-view="front">↑ Hall</button>
     <button type="button" data-view="right">→ Wall</button>
-    <button type="button" data-view="up">Q Ceiling</button>
     <button type="button" data-view="desk">↓ Desk</button>
-    <button type="button" id="act" hidden>Hold · E</button>
   </nav>
   <section class="trial" id="trial" aria-label="Practical exam" hidden>
     <strong id="trial-title"></strong><p id="trial-brief"></p><p id="trial-score" role="status"></p>
@@ -159,6 +248,8 @@ button:focus-visible,a:focus-visible{outline:2px solid #ffdc9f;outline-offset:4p
 <script src="curriculum.js"></script>
 <script src="proctor-art.js"></script>
 <script src="game.js"></script>
+<script src="room-play.js"></script>
+<script src="room-scene.js"></script>
 <script src="scene.js"></script>
 </body>
 </html>

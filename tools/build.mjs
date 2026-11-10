@@ -6,7 +6,7 @@ import {fileURLToPath} from 'node:url';
 
 const root = fileURLToPath(new URL('..',import.meta.url));
 const dist = join(root,'dist');
-const scripts = ['curriculum.js','proctor-art.js','game.js','scene.js'];
+const scripts = ['curriculum.js','proctor-art.js','game.js','room-play.js','room-scene.js','scene.js'];
 const pkg = JSON.parse(await readFile(join(root,'package.json'),'utf8'));
 
 async function bundle() {

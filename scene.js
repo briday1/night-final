@@ -2,6 +2,7 @@
 
 function point(x,y,z) { return [x,y,z]; }
 function cameraPoint([x,y,z]) {
+  x -= camera.x;
   y -= camera.y;
   z -= camera.z;
   const cy = Math.cos(camera.yaw), sy = Math.sin(camera.yaw);
@@ -16,15 +17,18 @@ function project([x,y,z]) {
 }
 function placeExamSheet() {
   const {left,right,y,near,far,width,height} = sheetPlane;
-  const origin = cameraPoint([left,y,far]);
-  const rightEdge = cameraPoint([right,y,far]);
-  const bottom = cameraPoint([left,y,near]);
-  const corner = cameraPoint([right,y,near]);
-  paper.hidden = run.mode !== 'running' || [origin,rightEdge,bottom,corner].some(p => p[2] < .1);
-  if (paper.hidden) return;
+  const [dx,dy,dz] = deskOffset();
+  const cornerAt = (x,z) => cameraPoint([x+dx,y+dy,z+dz]);
+  const origin = cornerAt(left,far), rightEdge = cornerAt(right,far);
+  const bottom = cornerAt(left,near), corner = cornerAt(right,near);
+  const visible = run.mode === 'running' && !run.room?.crossing &&
+    [origin,rightEdge,bottom,corner].every(p => p[2] >= .1);
+  const circuit = $('circuit'), hasCircuit = Boolean(run.room?.circuit);
+  paper.hidden = !visible || hasCircuit;
+  circuit.hidden = !visible || !hasCircuit;
+  if (!visible) return;
 
-  // Both renderers use the same camera. This homogeneous transform maps
-  // the interactive sheet onto the tabletop plane, including hit testing.
+  // The interactive paper and tether plate share the camera and tabletop plane.
   const column = ([x,y,z]) => {
     const c = Math.cos(camera.roll), s = Math.sin(camera.roll);
     return [stageWidth*(.5*z + (x*c+y*s)*focal/canvas.width),
@@ -32,7 +36,7 @@ function placeExamSheet() {
   };
   const step = (end,length) => column(end.map((coordinate,i) => (coordinate - origin[i]) / length));
   const matrix = [...step(rightEdge,width),...step(bottom,height),0,0,1,0,...column(origin)];
-  paper.style.transform = `matrix3d(${matrix.join(',')})`;
+  (hasCircuit ? circuit : paper).style.transform = `matrix3d(${matrix.join(',')})`;
 }
 function clip(points) {
   const near = .17, output = [];
@@ -213,7 +217,7 @@ function sky(time,opening) {
   ctx.restore();
 }
 function roof(opening,level) {
-  const p = palettes[level], breakWidth = level < 3 ? 0 : level === 3 ? .18 : .78;
+  const p = palettes[level], breakWidth = level < 3 ? 0 : level === 3 ? .32 : .30+1.06*damagePhase();
   for (const side of [-1,1]) {
     const offsetX = side*opening*5.8;
     const offsetY = opening*8.3;
@@ -258,26 +262,29 @@ function fractures(level) {
 }
 function roomShell(level,opening) {
   const p = palettes[level];
-  front(p.wall,-4,-1.35,4,2.10,7);
+  if (level === 4) tornWall();
+  else front(p.wall,-4,-1.35,4,2.10,7);
   side(p.left,-4,-2,-1.35,7,2.10);
   side(p.right,4,-2,-1.35,7,2.10);
-  flat(p.floor,-4,-2,4,7,-1.35);
-  for (let z=-1;z<7;z++) flat(p.slat,-4,z,4,z+.018,-1.343);
-  for (let x=-3;x<=3;x++) flat(p.shadow,x,-2,x+.021,7,-1.343);
+  if (level < 3) {
+    flat(p.floor,-4,-2,4,7,-1.35);
+    for (let z=-1;z<7;z++) flat(p.slat,-4,z,4,z+.018,-1.343);
+    for (let x=-3;x<=3;x++) flat(p.shadow,x,-2,x+.021,7,-1.343);
+  }
   roof(opening,level);
-  front(p.shadow,-4,-1.35,4,-.72);
+  if (level < 4) front(p.shadow,-4,-1.35,4,-.72);
   side(p.shadow,-3.99,-2,-1.35,7,-.72);
   side(p.shadow,3.99,-2,-1.35,7,-.72);
-  front(p.trim,-4,-.77,4,-.707);
+  if (level < 4) front(p.trim,-4,-.77,4,-.707);
   side(p.trim,-3.985,-2,-.77,7,-.707);
   side(p.trim,3.985,-2,-.77,7,-.707);
   for (let i=0;i<41;i++) {
     const y = ((i*113)%97)/37-.64, z = ((i*59)%223)/25;
-    front(i%3?p.slat:p.shadow,z-4.4,y,z-4.24,y+.012);
+    if (level < 4) front(i%3?p.slat:p.shadow,z-4.4,y,z-4.24,y+.012);
     side(p.slat,-3.98,z-1.3,y,z-1.1,y+.013);
     side(p.slat,3.98,z-1.4,y,z-1.26,y+.016);
   }
-  fractures(level);
+  if (level < 4) fractures(level);
 }
 function hall(level) {
   const p = palettes[level];
@@ -308,31 +315,19 @@ function hall(level) {
   }
 }
 function windowView(level,time) {
+  if (level) { shatteredWindow(level,time); return; }
   side('#161b24',-3.95,2.38,-.68,5.71,1.66);
-  side(palettes[level].trim,-3.94,2.49,-.56,5.6,1.54);
-  side(level ? '#0a212f' : '#182a36',-3.92,2.64,-.47,5.45,1.43);
-  const rise = level === 1 ? .24+.10*Math.sin(time*1.1) : level > 1 ? -.10 : -.30;
-  side(level ? '#204755' : '#32414d',-3.91,2.66,rise,5.43,1.41);
-  side(level === 1 ? '#7ea8a5' : '#687583',-3.90,2.66,rise,5.43,rise+.023);
-  if (!level) {
-    side('#a1a394',-3.90,4.62,.94,4.96,1.23);
-    for (let i=0;i<6;i++) {
-      const z = 2.7+i*.46;
-      worldLine('#172630',[-3.89,-.47,z],[-3.89,1.2-(i%3)*.24,z-.24],2);
-    }
-  } else {
-    for (let i=0;i<21;i++) {
-      const z = 2.68+(i*17%39)/15, y = -.45+((time*(.18+i%3*.06)+i*.21)%1.78);
-      side(i%4?'#446777':'#b6c7a9',-3.89,z,y,z+.024,y+.025);
-    }
-    for (const tip of [[-3.86,1.37,5.38],[-3.86,-.42,4.64],[-3.86,.88,2.72],[-3.86,-.43,2.91]]) {
-      const mid = [-3.86,.30,4.0];
-      worldLine('#a1b9bd',mid,tip);
-    }
+  side(palettes[0].trim,-3.94,2.49,-.56,5.6,1.54);
+  side('#182a36',-3.92,2.64,-.47,5.45,1.43);
+  side('#32414d',-3.91,2.66,-.30,5.43,1.41);
+  side('#a1a394',-3.90,4.62,.94,4.96,1.23);
+  for (let i=0;i<6;i++) {
+    const z = 2.7+i*.46;
+    worldLine('#172630',[-3.89,-.47,z],[-3.89,1.2-(i%3)*.24,z-.24],2);
   }
-  side(palettes[level].trim,-3.86,4.04,-.39,4.14,1.43);
-  side(palettes[level].trim,-3.86,2.64,.34,5.45,.43);
-  flat(palettes[level].trim,-4,2.42,-3.65,5.68,-.60);
+  side(palettes[0].trim,-3.86,4.04,-.39,4.14,1.43);
+  side(palettes[0].trim,-3.86,2.64,.34,5.45,.43);
+  flat(palettes[0].trim,-4,2.42,-3.65,5.68,-.60);
 }
 function shelfFungus(origin,size,time,lit=false) {
   const c = cameraPoint(origin);
@@ -346,6 +341,7 @@ function shelfFungus(origin,size,time,lit=false) {
   for (let i=-3;i<=3;i++) line(lit?'#cdb2cb':'#a887aa',[x+i*s*.16,y+s*.08],[x+i*s*.19,y+s*.20]);
 }
 function utilityWall(level,time) {
+  if (level >= 2) { colonizedWall(level,time); return; }
   const p = palettes[level];
   side('#141419',3.95,2.43,-1.12,5.04,1.51);
   side(p.trim,3.94,2.55,-1.03,4.93,1.40);
@@ -353,48 +349,42 @@ function utilityWall(level,time) {
   for (let i=0;i<7;i++) side(p.slat,3.91,2.73+i*.30,-.94,2.78+i*.30,1.30);
   side('#807562',3.88,3.53,.05,3.83,.19);
   worldText('SERVICE',point(3.90,1.64,3.75),p.light,56);
-  if (level < 2) return;
-  for (let i=0;i<16;i++) {
-    const y = -.88 + (i*31%112)/53, z = 2.75+(i*23%153)/61;
-    const root = [3.91,y-.21,z-.15], tip = [3.79,y+.07,z+.2];
-    worldLine(i%2?'#785f80':'#a184a6',root,tip,2);
-    shelfFungus([3.83,y,z],.09+(i%5)*.049,time,i%6===1);
-  }
-  for (let i=0;i<7;i++) shelfFungus([2.92+i*.14,-1.16,2.2+i*.27],.11+i*.017,time,false);
 }
-function collapsedFloor(level,time) {
-  if (level < 3) return;
-  shape('#161217',[[-4,-1.323,5.9],[-2.8,-1.323,5.25],[-1.1,-1.323,5.47],
-    [.45,-1.323,4.81],[2.92,-1.323,5.16],[4,-1.323,4.15],[4,-1.323,7],[-4,-1.323,7]]);
-  for (let i=0;i<16;i++) {
-    const x = -3.8+i*.48, z = 5.37+Math.sin(i*1.94)*.52;
-    shape(i%3?'#684a39':'#906650',[[x,-1.312,z],[x+.22,-1.312,z-.32],
-      [x+.38,-1.312,z+.03],[x+.18,-1.312,z+.57]]);
-  }
-  for (let i=0;i<24;i++) {
-    const x = -3.5+(i*91%321)/46, z = 5.39+(i*51%92)/76;
-    flat(i%4?'#302222':'#583629',x,z,x+.10,z+.04,-1.30+Math.sin(i+time)*.007);
-  }
-}
-function desk(level) {
+function desk(level,position=deskOffset(),packet=true) {
+  const [x,y,z] = position;
   const light = ['#976e53','#5b6870','#7e6380','#926150','#6f5476'][level];
-  block(-1.16,-1.34,.82,-1.05,-.61,1.79,['#302626','#241e20','#4b3933']);
-  block(1.05,-1.34,.82,1.16,-.61,1.79,['#302626','#241e20','#4b3933']);
-  block(-1.24,-.76,.48,1.24,-.582,1.94,['#4c3334','#31262a',light]);
-  for (let i=0;i<8;i++) flat(i%2?'#6f4b40':'#7d5747',-1.23,.53+i*.17,1.23,.55+i*.17,-.578);
-  flat('#503b38',sheetPlane.left-.027,sheetPlane.near-.024,sheetPlane.right+.027,sheetPlane.far+.02,-.574);
-  flat(run.mode==='title'?'#c6ae8f':'#cdb791',sheetPlane.left,sheetPlane.near,sheetPlane.right,sheetPlane.far,-.57);
-  for (let i=0;i<7;i++) flat(i===0?'#7d5347':'#9d836d',-.48,1.62-i*.088,.44,1.638-i*.088,-.569);
-  flat('#df9d50',.67,.84,.708,1.50,-.558);
-  flat('#302826',.67,1.50,.708,1.57,-.557);
-  block(-1.12,-.578,1.31,-.76,-.515,1.72,['#443133','#39232c','#7e5d56']);
-  block(-1.01,-.515,1.46,-.95,-.06,1.54,['#5e493f','#3c333a','#8f7263']);
-  block(-1.12,-.12,1.34,-.74,-.016,1.68,['#665044','#4d3c3c','#a87a60']);
-  flat(palettes[level].light,-1.035,1.43,-.84,1.59,-.016);
+  const timber = (x1,y1,z1,x2,y2,z2,colors) => block(x1+x,y1+y,z1+z,x2+x,y2+y,z2+z,colors);
+  const top = (color,x1,z1,x2,z2,at) => flat(color,x1+x,z1+z,x2+x,z2+z,at+y);
+  timber(-1.16,-1.34,.82,-1.05,-.61,1.79,['#302626','#241e20','#4b3933']);
+  timber(1.05,-1.34,.82,1.16,-.61,1.79,['#302626','#241e20','#4b3933']);
+  timber(-1.24,-.76,.48,1.24,-.582,1.94,['#4c3334','#31262a',light]);
+  for (let i=0;i<8;i++) top(i%2?'#6f4b40':'#7d5747',-1.23,.53+i*.17,1.23,.55+i*.17,-.578);
+  top('#503b38',sheetPlane.left-.027,sheetPlane.near-.024,sheetPlane.right+.027,sheetPlane.far+.02,-.574);
+  if (packet) {
+    top(run.mode==='title'?'#c6ae8f':'#cdb791',sheetPlane.left,sheetPlane.near,sheetPlane.right,sheetPlane.far,-.57);
+    for (let i=0;i<7;i++) top(i===0?'#7d5347':'#9d836d',-.48,1.62-i*.088,.44,1.638-i*.088,-.569);
+  } else top('#bc8e6f',-.38,.85,.36,1.72,-.564);
+  top('#df9d50',.67,.84,.708,1.50,-.558);
+  top('#302826',.67,1.50,.708,1.57,-.557);
+  if (level === 1) {
+    const stroke = run.room.age-run.room.strokeAt;
+    const drop = stroke < .35 ? Math.sin(stroke/.35*Math.PI)*.24 : 0;
+    timber(.81,-.57,1.35,1.16,-.39,1.74,['#664f42','#3e3435','#8c6f5b']);
+    limb([x+.99,y-.40,z+1.57],[x+.95,y+.32-drop,z+1.25],.034,.042,'#625559','#be9672');
+    timber(.80,.28-drop,1.20,1.10,.36-drop,1.30,['#79604f','#50413f','#c39066']);
+  } else {
+    timber(-1.12,-.578,1.31,-.76,-.515,1.72,['#443133','#39232c','#7e5d56']);
+    timber(-1.01,-.515,1.46,-.95,-.06,1.54,['#5e493f','#3c333a','#8f7263']);
+    timber(-1.12,-.12,1.34,-.74,-.016,1.68,['#665044','#4d3c3c','#a87a60']);
+    top(palettes[level].light,-1.035,1.43,-.84,1.59,-.016);
+  }
 }
-function horse(progress,time) {
-  const floor = [.14 + .14*Math.sin(progress*7),-1.32,mix(6.9,2.15,progress**1.28)];
-  const forward = direction(.21*Math.cos(progress*Math.PI),-1);
+function horse(progress,time,entry) {
+  const side = entry === 'left' ? -1 : entry === 'right' ? 1 : 0;
+  const start = side ? [side*3.58,-1.32,4.25] : [.14,-1.32,6.90];
+  const end = [side*.82,-1.32,2.15];
+  const floor = mixPoint(start,end,progress**1.28);
+  const forward = direction(end[0]-start[0]+.18*Math.sin(progress*5),end[2]-start[2]);
   const ribs = offset(floor,forward,0,1.01+.059*Math.sin(time*7+progress*10));
   groundShadow(floor,.69,.44);
   for (const end of [-1,1]) for (const side of [-1,1]) {
@@ -422,10 +412,10 @@ function horse(progress,time) {
   face('#edcf99',[[.078,.051],[.130,.054],[.137,.028],[.082,.027]]);
   face('#484049',[[-.09,-.28],[.09,-.28],[.073,-.35],[-.072,-.35]]);
 }
-function walker(progress,time,turn,proctor=false) {
+function walker(progress,time,turn,proctor=false,floorY=-1.34) {
   const z = proctor ? mix(6.75,3.40,progress) : mix(6.88,2.13,progress**1.2);
   const forward = direction(Math.sin(turn),-Math.cos(turn));
-  const floor = [proctor ? .24 : -.05+.18*Math.sin(progress*8),-1.34,z];
+  const floor = [proctor ? .24 : -.05+.18*Math.sin(progress*8),floorY,z];
   const torso = offset(floor,forward,0,.94 + Math.abs(Math.sin(time*4))*progress*.055);
   const shoulders = offset(torso,forward,.025,.52,.08);
   const head = offset(shoulders,forward,-.042,.29,.055);
@@ -529,22 +519,6 @@ function parallax(progress,time) {
   crown.forEach(([a,b],i) => disk(i%2?'#9e7bac':'#e0afc4',a,b,2+i%2,4));
   disk('#e5b2bf',x-3,y,r*.12,5);
   disk('#1a1329',x+1,y,r*.076,4,time);
-}
-function creature(progress,time) {
-  switch (course().id) {
-    case 'equine': horse(progress,time); break;
-    case 'abyss': {
-      const p = cameraPoint([mix(-4.03,-1.43,progress**1.65),.22+Math.sin(time*2)*.19,mix(4.38,1.98,progress)]);
-      if (p[2] >= .18) {
-        const [x,y] = project(p);
-        angler(x,y,(.68+.34*progress)*focal/p[2],time,progress);
-      }
-      break;
-    }
-    case 'fungal': bloom(progress,time); break;
-    case 'bog': walker(progress,time,Math.sin(time*1.9)*.18); break;
-    case 'eclipse': parallax(progress,time); break;
-  }
 }
 function dust(time,level,opening) {
   const w = canvas.width,h = canvas.height;
@@ -709,16 +683,18 @@ function renderScene(time) {
   const t = run.cinematic?.time ?? 0;
   const opening = ease((t-2.55)/3.65);
   sky(time,opening);
+  if (level === 4 && t < 2.45) parallax(.15+.07*Math.sin(time*.9),time);
   roomShell(level,opening);
-  hall(level);
+  if (level < 4) hall(level);
   windowView(level,time);
+  if (level >= 3) peatPit(level,time);
+  floodFloor(time);
   utilityWall(level,time);
-  collapsedFloor(level,time);
   const trial = run.trial;
   if (run.threat || run.retreat) {
     const progress = run.threat ? clamp(run.threat.age/run.threat.limit) :
       clamp(run.retreat.progress * (run.retreat.until-run.elapsed)/.95);
-    creature(progress,time);
+    horse(progress,time,(run.threat ?? run.retreat).approach.view);
   } else if (trial?.spec.id === 'breath') {
     const phase = breathPhase(trial.time);
     const turn = phase < 1.95 ? 0 : phase < 2.75 ? Math.PI*ease((phase-1.95)/.8) :
@@ -726,8 +702,24 @@ function renderScene(time) {
     walker(.29,trial.time,turn);
   } else if (run.mode === 'title' || (level===0 && run.courseAge<4.7 && run.mode==='running') || (t>0 && t<2.35)) {
     walker(t>0?ease(t/2.6)*.72:0,time,0,true);
+  } else if (level === 3) {
+    walker(.22+.085*Math.sin(time*.7),time,Math.sin(time)*.73,false,-2.79);
   }
-  desk(level);
+  if (level === 1) swimmingAngler(time);
+  if (level === 4) suspendedRoom(time);
+  if (level >= 3) {
+    const active = level === 3 ? run.room.station : 0;
+    for (let i=bogStations.length-1;i>=0;i--) {
+      if (i === active) continue;
+      const [x,z] = bogStations[i];
+      const y = level === 4 ? damagePhase()*(.50+.32*Math.sin(time*1.3+i)+i*.15) : 0;
+      desk(level,[x,y,z],false);
+    }
+  }
+  if (!run.room?.crossing) desk(level);
+  if (level === 4) tetherClamps();
+  floodFloor(time,true);
+  livingRoots(time);
   dust(time,level,opening);
   if (t > 12.2) box('rgba(8,8,13,'+ease((t-12.2)/1.9)+')',0,0,canvas.width,canvas.height);
   practicalObjects();

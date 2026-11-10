@@ -7,7 +7,6 @@ const courses = [
     intro: 'The proctor stands in the hall. A chain catches the light beside his left eye.',
     shift: 'The clock stops for a beat. Something with hooves answers it.',
     study: 'Poll: behind the ears. Withers: over the shoulders. Croup: top of the rump. Dock: base of the tail. Foreleg knee: carpus. Hind-leg hock: tarsus. The pastern is below the fetlock. The stifle is higher than the hock. Find the frog on the hoof’s underside and the coronary band above its wall. Fiber ferments in the cecum and large colon, after the small intestine.',
-    threat: {name:'The Hollow Mare',view:'front',tell:'HALL · A hoof drags against tile.',action:'Keep your eyes on it',hold:1.35,pan:0,method:'watch',hit:'The Hollow Mare reached your desk.'},
     practical: {id:'ward',view:'front',title:'The Three Shoes',brief:'Watch the horseshoes light up. Repeat each pattern on the same shoes.',goal:2,buttons:['1','2','3']},
     questions: [
       ['Where would you fit a strap over the poll?', 'Just behind the ears', 'At the base of the tail', 'Across the chest', 'Under the jaw'],
@@ -30,10 +29,9 @@ const courses = [
   },
   {
     id: 'abyss', number: '02', title: 'Abyssal Biology', accent: '#88d3d1',
-    intro: 'No rain falls upward. The water outside the window does.',
-    shift: 'The glass bows inward. A light moves far below it.',
+    intro: 'The bilge pump rattles beside the paper. The Angler has come in with the water.',
+    shift: 'The window breaks inward. Water hits the legs of the desk.',
     study: 'The twilight zone runs from about 200 to 1,000 meters, the midnight zone from 1,000 to 4,000, the abyss from 4,000 to 6,000, and the hadal zone deeper still. Pressure rises as you descend. Marine snow is sinking organic debris. At some vents, microbes use chemical energy. Bioluminescence is light made by a chemical reaction. Anglerfish lure prey. Photophores are light organs. A whale fall feeds seafloor organisms.',
-    threat: {name:'The Drowned Angler',view:'left',tell:'WINDOW · A light moves against the current.',action:'Hold the floodlight',hold:1.15,pan:-.84,method:'hold',hit:'The Drowned Angler broke through the pane.'},
     practical: {id:'beam',view:'left',title:'Searchlight',brief:'Move the light with your mouse, finger or arrow keys. Follow the angler until it dives.',goal:3.6,buttons:[]},
     questions: [
       ['The depth gauge reads 300 meters. What zone is this?', 'Twilight zone', 'Sunlight zone', 'Abyssal zone', 'Hadal zone'],
@@ -57,10 +55,9 @@ const courses = [
   },
   {
     id: 'fungal', number: '03', title: 'Fungal Ecology', accent: '#c0a8e4',
-    intro: 'The cracked glass stays dark. A second light grows along the seams of the wall.',
-    shift: 'The room exhales. Its new lungs are in the plaster.',
+    intro: 'Cut the root knots before they cover the ink. The Bloom is still growing.',
+    shift: 'The service wall bursts. A mat of roots crawls out of the opening.',
     study: 'A hypha is a filament. A network of hyphae is mycelium. Mushrooms are spore-bearing fruiting bodies. Gills on many caps bear spores. Fungi include yeasts, and their walls commonly contain chitin. Decomposers release nutrients from dead matter. Mycorrhizae connect fungi and roots, exchanging minerals and water for plant-made sugars. Lichens pair a fungus with a photosynthetic partner. Rust fungi infect living plants.',
-    threat: {name:'The Bloom',view:'right',tell:'RIGHT WALL · Wet stems are splitting the plaster.',action:'Hold the vent shut',hold:1.45,pan:.84,method:'hold',hit:'A cloud of spores reached your face.'},
     practical: {id:'vents',view:'right',title:'The Spore Manifold',brief:'Shut all three vents. Switch 1 flips A + B. Switch 2 flips B + C. Switch 3 flips C.',goal:3,buttons:['1','2','3']},
     questions: [
       ['Under a microscope, what is one thread of a filamentous fungus?', 'A hypha', 'A root hair', 'A gill', 'A vein'],
@@ -84,10 +81,9 @@ const courses = [
   },
   {
     id: 'bog', number: '04', title: 'Bog Archaeology', accent: '#e7a383',
-    intro: 'The lower hall has turned to peat. Leave the footprints where you find them.',
-    shift: 'The floor gives. Something has been underneath it a very long time.',
+    intro: 'The next packets are across the pit. Brass braces mark planks that can hold you.',
+    shift: 'The floor gives. A few planks still reach the other desks.',
     study: 'Peat builds from partly decayed plant matter. Sphagnum moss helps create acidic conditions in many raised bogs. Cold, waterlogged, oxygen-poor peat can preserve skin, hair, clothes, and even a last meal, while acid can remove bone minerals. Radiocarbon dating can estimate the age of suitable organic remains. A find’s depth and nearby objects provide context. Tollund Man was found in Denmark. Excavated wet remains require controlled conservation.',
-    threat: {name:'The Peat Walker',view:'front',tell:'HALL · Bare feet lift out of the mud.',action:'Hold the door bolt',hold:1.5,pan:0,method:'hold',hit:'The Peat Walker crossed the threshold.'},
     practical: {id:'breath',view:'front',title:'The Breath Test',brief:'When it faces you, hold the cloth or Space. Release to breathe as soon as it turns away.',goal:3,buttons:['HOLD']},
     questions: [
       ['What is peat made from primarily?', 'Partly decayed plant material', 'Crushed volcanic glass', 'Ground shell fragments', 'Fresh mineral sand'],
@@ -111,10 +107,9 @@ const courses = [
   },
   {
     id: 'eclipse', number: '05', title: 'Eclipse Mechanics', accent: '#dec1fa',
-    intro: 'The clock points straight up. Through the rafters you see a second horizon.',
-    shift: 'The sky presses against the ceiling. One last practical.',
+    intro: 'The desk is pulling free. Connect the tether to hold it down.',
+    shift: 'The hall wall tears away. Loose desks rise toward the open roof.',
     study: 'Solar eclipse: Moon between Earth and Sun at new moon. Lunar eclipse: Earth between Sun and Moon at full moon. The Moon’s orbit is tilted, so most new moons miss the alignment. The umbra is the full shadow, the penumbra a partial shadow, and the antumbra the region where a smaller apparent Moon leaves a ring. The corona is the Sun’s outer atmosphere. Earth’s atmosphere filters light that reaches a totally eclipsed Moon. A Saros is about 18 years.',
-    threat: {name:'The Parallax',view:'up',tell:'CEILING · A dark disk slides across the gap.',action:'Hold it in view',hold:1.35,pan:0,method:'watch',hit:'The room shifted beneath your chair.'},
     practical: {id:'orrery',view:'front',title:'The Orrery',brief:'Drag the Moon over the Sun. Use − or + to match their rims, then lock the alignment.',goal:1,buttons:['−','+','LOCK']},
     questions: [
       ['During a solar eclipse, which body is between the other two?', 'Moon', 'Earth', 'Sun', 'Mars'],

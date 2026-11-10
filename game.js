@@ -18,10 +18,10 @@ const views = {
   right: {yaw:.84,pitch:.025},up: {yaw:0,pitch:.92},
   desk: {yaw:0,pitch:-1.45,y:.35,z:1.16}
 };
-const camera = {yaw:0,pitch:0,y:0,z:0,lean:0,roll:0};
+const camera = {yaw:0,pitch:0,x:0,y:0,z:0,lean:0,walking:0,roll:0};
 const sheetPlane = {left:-.59,right:.59,y:-.566,near:.75,far:1.79,width:540,height:464};
 const run = {mode:'title',course:0,view:'front',elapsed:0,remaining:examTime,health:3};
-let lastPaper = '', held = false, lastFrame = performance.now(), ambientDue = 0;
+let lastPaper = '', lastFrame = performance.now(), ambientDue = 0;
 let stageWidth = 576, stageHeight = 324, focal = 267;
 let audio, master, noiseBuffer;
 let muted = false;
@@ -42,9 +42,9 @@ function write(element,text) {
 function course() { return courses[run.course]; }
 function inSitting() { return run.mode === 'running' || run.mode === 'practical'; }
 function focused() {
-  const target = views[run.view];
+  const target = targetView();
   return Math.abs(camera.yaw - target.yaw) < .036 && Math.abs(camera.pitch - target.pitch) < .035 &&
-    Math.abs(camera.z - (target.z ?? 0)) < .030;
+    Math.abs(camera.x-target.x) < .036 && Math.abs(camera.z-target.z) < .036;
 }
 function initSound() {
   if (muted) return;
@@ -114,32 +114,16 @@ function ambience(time) {
   tone(root*2.12,2.4,.066,.4,'sine',root*2.04,.39);
   noise([1300,280,1600,480,800][run.course],3.2,.12,0,0,'lowpass');
 }
-function warning(near=0) {
-  const {pan} = course().threat;
-  const level = .31 + .23 * near;
-  switch (course().id) {
-    case 'equine':
-      for (let i=0;i<3;i++) {
-        tone(125,.24,level,pan,'triangle',46,i*.24);
-        noise(580,.16,level,pan,i*.24,'lowpass');
-      }
-      break;
-    case 'abyss':
-      tone(890,1.24,level*.63,pan,'sine',245);
-      noise(320,1.52,level,pan,0,'lowpass');
-      break;
-    case 'fungal':
-      noise(1510,.9,level,pan);
-      tone(133,.7,level*.52,pan,'sawtooth',72,.14);
-      break;
-    case 'bog':
-      noise(280,.86,level,pan,0,'lowpass');
-      tone(77,.44,level,pan,'triangle',36,.43);
-      break;
-    case 'eclipse':
-      tone(226,1.35,level*.51,0,'sine',58);
-      tone(233,1.28,level*.38,0,'sine',56);
-      break;
+const mareApproaches = [
+  {view:'front',pan:0,tell:'HALL · A hoof drags against tile.'},
+  {view:'left',pan:-.85,tell:'WINDOW · A hoof hits the sill.'},
+  {view:'right',pan:.85,tell:'SERVICE DOOR · The latch starts to rattle.'}
+];
+function warning(pan,near=0) {
+  const level = .31+.23*near;
+  for (let i=0;i<3;i++) {
+    tone(125,.24,level,pan,'triangle',46,i*.24);
+    noise(580,.16,level,pan,i*.24,'lowpass');
   }
 }
 function showPanel(html,screen) {
@@ -149,8 +133,8 @@ function showPanel(html,screen) {
   $('panel').querySelector('button')?.focus({preventScroll:true});
 }
 function title() {
-  Object.assign(run,{mode:'title',course:0,view:'front',elapsed:0,trial:null,threat:null,cinematic:null,shift:null});
-  Object.assign(camera,{yaw:-.29,pitch:.025,y:0,z:0,lean:0,roll:0});
+  Object.assign(run,{mode:'title',course:0,view:'front',elapsed:0,trial:null,threat:null,retreat:null,cinematic:null,shift:null,room:null});
+  Object.assign(camera,{yaw:-.29,pitch:.025,x:0,y:0,z:0,lean:0,walking:0,roll:0});
   $('caption').hidden = true;
   showPanel(`<div class="title-number">ROOM 013 <span aria-hidden="true">///</span> 23:42</div>
     <h1 class="wordmark">NIGHT<br>FINAL</h1>
@@ -166,8 +150,8 @@ function title() {
 function showHelp() {
   showPanel(`<div class="eyebrow">Examination rules</div><h1>Read first</h1>
     <p>Five subjects. Twelve questions each. Get at least nine right per subject. The ink is permanent, and a fourth miss ends the sitting.</p>
-    <p>Look down to answer. Use W/A/D/S or the arrows to turn. Q looks at the ceiling when it opens. Use 1–4 to mark an answer and Enter to advance.</p>
-    <p>Listen for a creature, turn toward it and follow the prompt. Hold E or the lit control when asked. You regain one point of composure after each subject.</p>
+    <p>Use 1–4 to mark an answer and Enter to advance. In Horse Anatomy, use W/A/D/S or the arrows to look around and listen for the Mare.</p>
+    <p>When the room changes, follow the controls for the pump, root knots, broken floor and desk tether. You regain one point of composure after each subject.</p>
     <p>Turn in each packet to start its practical. Finish its objective to move on. The whole sitting has an 18-minute limit. Esc pauses.</p>
     <button class="primary" id="back">Return to title</button>`,'help');
   $('back').onclick = title;
@@ -183,11 +167,10 @@ function showStudy() {
 function start() {
   Object.assign(run,{mode:'running',course:0,page:0,elapsed:0,remaining:examTime,courseAge:0,
     view:'front',health:3,pending:0,answers:courses.map(c => Array(c.questions.length).fill(null)),
-    exam:makeExam(),misses:0,grades:[],trial:null,threat:null,retreat:null,nextThreat:8.8,
-    hitUntil:0,notice:'',noticeUntil:0,shift:null,cinematic:null,clockBeat:-1});
-  Object.assign(camera,{yaw:0,pitch:0,y:0,z:0,lean:0,roll:0});
+    exam:makeExam(),misses:0,grades:[],trial:null,threat:null,retreat:null,nextThreat:8.8,mareRoute:0,
+    hitUntil:0,notice:'',noticeUntil:0,shift:null,cinematic:null,room:null,loss:''});
+  Object.assign(camera,{yaw:0,pitch:0,x:0,y:0,z:0,lean:0,walking:0,roll:0});
   lastPaper = '';
-  held = false;
   ambientDue = 0;
   initSound();
   noise(420,.7,.3,0,0,'lowpass');
@@ -203,8 +186,7 @@ function notice(text,seconds) {
   run.noticeUntil = run.elapsed + seconds;
 }
 function look(view) {
-  if (run.mode !== 'running' || run.view === view || (view === 'up' && run.course < 4)) return;
-  held = false;
+  if (run.mode !== 'running' || run.room || run.view === view || view === 'up') return;
   run.view = view;
   noise(940,.19,.14,views[view].yaw);
   renderUI();
@@ -214,7 +196,7 @@ function prepareQuestion() {
   if (debug) run.answers[run.course][run.page] = question().correct;
 }
 function markAnswer(index) {
-  if (run.mode !== 'running' || run.view !== 'desk' || !focused() || index < 0 || index >= question().options.length) return;
+  if (run.mode !== 'running' || run.view !== 'desk' || !focused() || roomBlock() || index < 0 || index >= question().options.length) return;
   const entries = run.answers[run.course];
   if (entries[run.page] !== null) return;
   entries[run.page] = index;
@@ -224,7 +206,7 @@ function markAnswer(index) {
   renderUI();
 }
 function nextQuestion() {
-  if (run.mode !== 'running' || run.view !== 'desk' || !focused() || run.pending ||
+  if (run.mode !== 'running' || run.view !== 'desk' || !focused() || run.pending || roomBlock() ||
       run.answers[run.course][run.page] === null) return;
   if (run.page + 1 === questionsPerCourse) {
     startPractical();
@@ -232,6 +214,7 @@ function nextQuestion() {
   }
   run.page++;
   prepareQuestion();
+  roomPageTurn();
   noise(900,.25,.22,.14);
   renderUI();
 }
@@ -245,35 +228,41 @@ function tickExam(dt) {
       if (run.misses > allowedMisses) { finish('grade'); return; }
     }
   }
+  if (run.room) { tickRoom(dt); return; }
+  tickMare(dt);
+}
+function loseComposure(message,pan) {
+  run.hitUntil = run.elapsed+.52;
+  run.health--;
+  tone(89,.64,.72,pan,'sawtooth',28);
+  noise(840,.45,.64,pan);
+  notice(message,3.25);
+  if (!run.health) { run.loss = message; finish('caught'); }
+}
+function tickMare(dt) {
   if (run.retreat && run.elapsed >= run.retreat.until) run.retreat = null;
   if (!run.threat && run.elapsed >= run.nextThreat) {
-    run.threat = {age:0,defense:0,nextWarn:2.35,limit:Math.max(5.25,8.4-run.course*.58)};
-    warning();
+    const approach = mareApproaches[run.mareRoute++ % mareApproaches.length];
+    run.threat = {approach,age:0,defense:0,nextWarn:2.35,limit:mix(9.2,6.7,packetProgress())};
+    warning(approach.pan);
   }
   if (!run.threat) return;
-  const threat = run.threat, kind = course().threat;
+  const threat = run.threat, approach = threat.approach;
   threat.age += dt;
-  const defending = focused() && run.view === kind.view && (kind.method === 'watch' || held);
+  const defending = focused() && run.view === approach.view;
   threat.defense = defending ? threat.defense + dt : Math.max(0,threat.defense - dt*1.7);
-  if (threat.defense >= kind.hold) {
-    run.retreat = {progress:threat.age / threat.limit,until:run.elapsed + .95};
+  if (threat.defense >= 1.35) {
+    run.retreat = {approach,progress:threat.age/threat.limit,until:run.elapsed+.95};
     run.threat = null;
-    run.nextThreat = run.elapsed + 12.5 - run.course*.75 + Math.random()*4;
+    run.nextThreat = run.elapsed+mix(15.8,9.9,packetProgress())+Math.random()*3;
     notice('It backed away.',2.1);
-    held = false;
-    tone(220,.6,.23,kind.pan,'triangle',48);
+    tone(220,.6,.23,approach.pan,'triangle',48);
   } else if (threat.age >= threat.limit) {
     run.threat = null;
     run.nextThreat = run.elapsed + 10.4;
-    run.hitUntil = run.elapsed + .52;
-    run.health--;
-    held = false;
-    tone(89,.64,.72,kind.pan,'sawtooth',28);
-    noise(840,.45,.64,kind.pan);
-    if (!run.health) finish('caught');
-    else notice(kind.hit,3.25);
+    loseComposure('The Hollow Mare reached your desk.',approach.pan);
   } else if (threat.age >= threat.nextWarn) {
-    warning(threat.age / threat.limit);
+    warning(approach.pan,threat.age/threat.limit);
     threat.nextWarn += threat.age >= threat.limit*.65 ? 1.05 : 1.8;
   }
 }
@@ -296,7 +285,6 @@ function startPractical() {
   if (spec.id === 'vents') trial.open = [0b001,0b010,0b101,0b111][Math.floor(Math.random()*4)];
   if (spec.id === 'breath') Object.assign(trial,{air:1,seen:false,exposed:0});
   if (spec.id === 'orrery') Object.assign(trial,{moon:[.29,.66,.071],drag:null});
-  held = false;
   targets.forEach((button,i) => {
     const labels = spec.id === 'ward' ? ['Left horseshoe','Middle horseshoe','Right horseshoe'] :
       spec.id === 'vents' ? ['Flip vents A and B','Flip vents B and C','Flip vent C'] :
@@ -413,6 +401,7 @@ function clearPractical() {
   run.mode = 'shift';
   run.shift = {time:0};
   run.course++;
+  run.room = openRoom(course().id);
   run.view = ['front','left','right','front','up'][run.course];
   $('caption').hidden = false;
   write($('caption'),course().shift);
@@ -425,6 +414,7 @@ function tickShift(dt) {
   run.shift = null;
   run.mode = 'running';
   run.page = 0;
+  run.view = 'desk';
   run.courseAge = 0;
   run.misses = 0;
   run.health = Math.min(3,run.health+1);
@@ -466,7 +456,7 @@ function finish(reason) {
   const detail = {
     clear:'Your score is recorded. The proctor is still watching.',
     grade:`A fourth missed answer ended ${course().title}. The packet required nine correct answers.`,
-    caught:course().threat.hit,
+    caught:run.loss,
     time:'The clock reached midnight before the final was turned in.'
   }[reason];
   const gradebook = courses.map((c,i) => {
@@ -494,7 +484,6 @@ function pause() {
   } else if (inSitting()) {
     run.pausedMode = run.mode;
     run.mode = 'paused';
-    held = false;
     if (run.trial) {
       run.trial.held = false;
       run.trial.drag = null;
@@ -509,7 +498,8 @@ function pause() {
 function paperUI() {
   const answer = run.answers[run.course][run.page], q = question();
   const pending = run.pending > 0;
-  const key = [run.course,run.page,answer,pending].join('/');
+  const block = roomBlock();
+  const key = [run.course,run.page,answer,pending,block].join('/');
   if (key !== lastPaper) {
     lastPaper = key;
     write($('packet'),course().title);
@@ -523,7 +513,7 @@ function paperUI() {
       const button = document.createElement('button');
       button.type = 'button';
       button.textContent = `${i+1}. ${option.text}`;
-      button.disabled = answer !== null;
+      button.disabled = answer !== null || Boolean(block);
       if (answer !== null && !pending) {
         if (answer === i) button.dataset.mark = i === q.correct ? 'right' : 'wrong';
         else if (i === q.correct) button.dataset.mark = 'key';
@@ -533,9 +523,9 @@ function paperUI() {
     }));
     write($('paper-note'),`Packet ${course().number} · ${allowedMisses} misses allowed`);
     write($('next'),run.page+1 === questionsPerCourse ? 'Turn in packet' : 'Next ›');
-    $('next').disabled = answer === null || pending;
-    write($('paper-status'),pending ? 'Ink drying…' : answer === null ? 'Make one mark.' :
-      answer === q.correct ? '✓ Correct' : '× Miss recorded');
+    $('next').disabled = answer === null || pending || Boolean(block);
+    write($('paper-status'),block || (pending ? 'Ink drying…' : answer === null ? 'Make one mark.' :
+      answer === q.correct ? '✓ Correct' : '× Miss recorded'));
   }
   $('writing').value = answer === null ? 0 : 1 - run.pending / writingTime;
 }
@@ -594,8 +584,9 @@ function renderUI() {
   stage.style.setProperty('--course',course().accent);
   if (!running) stage.removeAttribute('data-defense');
   $('trial').hidden = !practical;
-  $('controls').hidden = !running;
+  $('controls').hidden = !running || Boolean(run.room);
   paper.inert = !running || run.view !== 'desk' || !focused();
+  renderRoomControls(running);
   if (running) paperUI();
   if (practical) renderTrial();
   if (!running && !practical && run.mode !== 'paused') {
@@ -610,22 +601,18 @@ function renderUI() {
   $('misses').classList.toggle('danger',run.misses >= allowedMisses);
   write($('nerve'),`Composure ${run.health} / 3`);
   $('nerve').classList.toggle('danger',run.health === 1);
-  const kind = course().threat;
-  const confronting = Boolean(running && run.threat && run.view === kind.view && focused());
-  const hasAction = confronting && kind.method === 'hold';
-  stage.toggleAttribute('data-defense',confronting && run.threat.defense > 0);
-  $('act').hidden = !hasAction;
-  $('act').toggleAttribute('data-held',held);
-  if (hasAction) write($('act'),`${kind.action} · E${held ? ' · '+Math.floor(clamp(run.threat.defense/kind.hold)*100)+'%' : ''}`);
-  const cue = running && run.threat ? confronting ?
-    `${kind.action}${kind.method === 'watch' ? ' · '+Math.floor(clamp(run.threat.defense/kind.hold)*100)+'%' : ''}` :
-    kind.tell : running && run.noticeUntil > run.elapsed ? run.notice : '';
+  const approach = run.threat?.approach;
+  const confronting = running && approach && run.view === approach.view && focused();
+  stage.toggleAttribute('data-defense',Boolean(confronting && run.threat.defense > 0));
+  const cue = running && approach ? confronting ?
+    `Keep your eyes on it · ${Math.floor(clamp(run.threat.defense/1.35)*100)}%` :
+    approach.tell : running ? (run.hitUntil > run.elapsed ? run.notice :
+      roomCue() || (run.noticeUntil > run.elapsed ? run.notice : '')) : '';
   write($('cue'),cue);
   for (const button of lookButtons) {
     const view = button.dataset.view;
-    button.hidden = view === 'up' && run.course < 4;
     button.setAttribute('aria-pressed',String(view === run.view));
-    button.toggleAttribute('data-alert',Boolean(run.threat && view === kind.view));
+    button.toggleAttribute('data-alert',view === approach?.view);
   }
 }
 function screenInput(event) {
@@ -666,19 +653,8 @@ targets.forEach((button,i) => {
     button.addEventListener(type,() => { if (run.trial) run.trial.held = false; });
   }
 });
-function holdDefense() {
-  if (run.mode === 'running' && run.threat && focused() &&
-      run.view === course().threat.view && course().threat.method === 'hold') held = true;
-}
-$('act').addEventListener('pointerdown',event => {
-  if (event.button !== 0) return;
-  event.preventDefault();
-  $('act').setPointerCapture(event.pointerId);
-  holdDefense();
-});
-for (const type of ['pointerup','pointercancel','lostpointercapture']) $('act').addEventListener(type,() => { held = false; });
 const bindings = {KeyA:'left',ArrowLeft:'left',KeyW:'front',ArrowUp:'front',
-  KeyD:'right',ArrowRight:'right',KeyS:'desk',ArrowDown:'desk',KeyQ:'up'};
+  KeyD:'right',ArrowRight:'right',KeyS:'desk',ArrowDown:'desk'};
 const arrows = {ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1],
   KeyA:[-1,0],KeyD:[1,0],KeyW:[0,-1],KeyS:[0,1]};
 window.addEventListener('keydown',event => {
@@ -706,17 +682,15 @@ window.addEventListener('keydown',event => {
     }
     return;
   }
-  if (bindings[code]) { event.preventDefault(); look(bindings[code]); }
-  else if (code === 'KeyE') { event.preventDefault(); holdDefense(); }
+  if (roomKey(event)) { event.preventDefault(); }
+  else if (bindings[code]) { event.preventDefault(); look(bindings[code]); }
   else if (digit >= 0) { event.preventDefault(); if (!event.repeat) markAnswer(digit); }
   else if (code === 'Enter' && run.view === 'desk') { event.preventDefault(); if (!event.repeat) nextQuestion(); }
 });
 window.addEventListener('keyup',event => {
-  if (event.code === 'KeyE') held = false;
   if (event.code === 'Space' && run.trial?.spec.id === 'breath') run.trial.held = false;
 });
 window.addEventListener('blur',() => {
-  held = false;
   if (run.trial) {
     run.trial.held = false;
     run.trial.drag = null;
@@ -745,17 +719,20 @@ function frame(now) {
   else if (run.mode === 'ending') tickEnding(dt);
 
   if (run.mode !== 'paused') {
-    const view = views[run.view], blend = 1 - Math.exp(-dt*(reducedMotion ? 18 : 6.5));
+    const view = targetView(), blend = 1 - Math.exp(-dt*(reducedMotion ? 18 : 6.5));
     camera.yaw = mix(camera.yaw,view.yaw,blend);
     camera.pitch = mix(camera.pitch,view.pitch,blend);
+    camera.x = mix(camera.x,view.x,blend);
     camera.y = mix(camera.y,view.y ?? 0,blend);
-    camera.z = mix(camera.z,view.z ?? 0,blend);
-    camera.lean = mix(camera.lean,run.view === 'desk' ? 1 : 0,blend);
+    camera.z = mix(camera.z,view.z,blend);
+    camera.lean = mix(camera.lean,view.reading ? 1 : 0,blend);
+    camera.walking = mix(camera.walking,run.room?.crossing ? 1 : 0,blend);
     camera.roll = reducedMotion ? 0 : run.shift ? Math.sin(run.shift.time*26)*.021*(1-ease(run.shift.time/3.3)) :
       run.cinematic && run.cinematic.time > 2.4 && run.cinematic.time < 5 ?
         Math.sin(run.cinematic.time*28)*.027 : 0;
   }
-  focal = mix(267,Math.min(224,canvas.width*.66),camera.lean);
+  const readingFocal = run.room?.circuit ? Math.min(198,canvas.width*.59) : Math.min(224,canvas.width*.66);
+  focal = mix(mix(267,readingFocal,camera.lean),Math.min(207,canvas.width*.72),camera.walking);
   renderUI();
   renderScene(now/1000);
   requestAnimationFrame(frame);

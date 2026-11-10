@@ -6,13 +6,17 @@ A first-person exam horror game. Five papers are waiting in Room 013. Look away 
 
 Open `index.html` from the downloaded repository in a desktop browser. For one offline file, run `npm run package:web` and open `dist/Night-Final.html`. The single-file build needs Node but no installed packages.
 
-- Use **W/A/D/S** or the arrow keys to look around. **Q** looks up when the ceiling opens.
+- In **Horse Anatomy**, use **W/A/D/S** or the arrow keys to look around. Find the Mare when you hear its approach and keep it in view.
 - Look down and use **1–4** to write an answer. Press **Enter** to advance. You can also use the desk buttons, mouse or touch.
 - Every answer is permanent for that sitting. Get **9 of 12** right in each subject. A fourth miss ends the sitting.
-- Listen for directional warnings. Turn toward the creature and follow the prompt. **E** holds a defense when the cue asks for it.
+- In **Abyssal Biology**, tap **E** or the pump handle to keep the flood below the paper.
+- In **Fungal Ecology**, cut the lit root knots on the paper with **Q/E/Z/C** or a tap.
+- In **Bog Archaeology**, cross to the next desk after questions 3, 6 and 9. Use **A/W/D** to step one lane at a time and **S** to backtrack. Brass braces identify supported planks.
+- In **Eclipse Mechanics**, rotate circuit tiles with **1–9** or a tap to power the tether and bring the desk down.
+- The room gets more dangerous as the sitting progresses. Surges grow stronger, roots spread faster, wakes swamp later crossings, and later circuits have to be repaired under gravity pull.
 - Turn in each packet to start a practical. Its objective opens the next subject. The exam clock runs for 18 minutes during play. One point of composure returns between subjects.
 - **Esc** pauses. **F11** toggles fullscreen in the desktop app.
-- Add `?debug=1` to the browser URL or start the desktop executable with `--debug-exam` to premark questions. The practicals still have to be played.
+- Add `?debug=1` to the browser URL or start the desktop executable with `--debug-exam` to premark questions. The room mechanics and practicals still have to be played.
 
 ## Desktop build
 
