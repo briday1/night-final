@@ -21,7 +21,7 @@ function placeExamSheet() {
   const cornerAt = (x,z) => cameraPoint([x+dx,y+dy,z+dz]);
   const origin = cornerAt(left,far), rightEdge = cornerAt(right,far);
   const bottom = cornerAt(left,near), corner = cornerAt(right,near);
-  const visible = run.mode === 'running' && !run.room?.crossing &&
+  const visible = run.mode === 'running' && !run.room?.crossing && !pumpAway() &&
     [origin,rightEdge,bottom,corner].every(p => p[2] >= .1);
   const circuit = $('circuit'), hasCircuit = Boolean(run.room?.circuit);
   paper.hidden = !visible || hasCircuit;
@@ -342,6 +342,7 @@ function utilityWall(level,time) {
   side('#807562',3.88,3.53,.05,3.83,.19);
   side(p.trim,3.94,3.09,1.55,4.41,1.83);
   drawSign(serviceSign,p.light);
+  if (level === 1) wallPump(run.room);
 }
 function desk(level,position=deskOffset(),packet=true) {
   const [x,y,z] = position;
@@ -359,13 +360,6 @@ function desk(level,position=deskOffset(),packet=true) {
   } else top('#bc8e6f',-.38,.85,.36,1.72,-.564);
   top('#df9d50',.67,.84,.708,1.50,-.558);
   top('#302826',.67,1.50,.708,1.57,-.557);
-  if (level === 1) {
-    const stroke = run.room.age-run.room.strokeAt;
-    const drop = stroke < .35 ? Math.sin(stroke/.35*Math.PI)*.24 : 0;
-    timber(.81,-.57,1.35,1.16,-.39,1.74,['#664f42','#3e3435','#8c6f5b']);
-    limb([x+.99,y-.40,z+1.57],[x+.95,y+.32-drop,z+1.25],.034,.042,'#625559','#be9672');
-    timber(.80,.28-drop,1.20,1.10,.36-drop,1.30,['#79604f','#50413f','#c39066']);
-  }
 }
 function horse(progress,time,entry) {
   const side = entry === 'left' ? -1 : entry === 'right' ? 1 : 0;
@@ -400,17 +394,17 @@ function horse(progress,time,entry) {
   face('#edcf99',[[.078,.051],[.130,.054],[.137,.028],[.082,.027]]);
   face('#484049',[[-.09,-.28],[.09,-.28],[.073,-.35],[-.072,-.35]]);
 }
-function walker(progress,time,turn,proctor=false,floorY=-1.34) {
+function walker(progress,time,turn,proctor=false,position=null) {
   const z = proctor ? mix(6.75,3.40,progress) : mix(6.88,2.13,progress**1.2);
   const forward = direction(Math.sin(turn),-Math.cos(turn));
-  const floor = [proctor ? mix(hallDoorX-.03,.24,progress) : -.05+.18*Math.sin(progress*8),floorY,z];
+  const floor = position ?? [proctor ? mix(hallDoorX-.03,.24,progress) : -.05+.18*Math.sin(progress*8),-1.34,z];
   const torso = offset(floor,forward,0,.94 + Math.abs(Math.sin(time*4))*progress*.055);
   const shoulders = offset(torso,forward,.025,.52,.08);
   const head = offset(shoulders,forward,-.042,.29,.055);
-  const edge = proctor ? '#6c6574' : '#7c665c';
-  const coat = proctor ? '#383744' : '#453334';
-  const skin = proctor ? '#a58f82' : '#8d7565';
-  groundShadow(floor,.58,.46);
+  const edge = proctor ? '#6c6574' : position ? '#77747b' : '#7c665c';
+  const coat = proctor ? '#383744' : position ? '#282734' : '#453334';
+  const skin = proctor ? '#a58f82' : position ? '#ac9988' : '#8d7565';
+  if (floor[1] >= -1.4) groundShadow(floor,.58,.46);
   for (const sign of [-1,1]) {
     const [step,lift] = gait(time*.76+(sign===1?.5:0),progress*.63);
     const foot = offset(floor,forward,sign*.14,lift,step);
@@ -427,8 +421,9 @@ function walker(progress,time,turn,proctor=false,floorY=-1.34) {
   limb(offset(torso,forward,0,-.19,-.03),shoulders,.30,.38,coat,edge);
   limb(shoulders,head,.14,.23,skin,'#35292f');
   const face = (color,points) => shape(color,points.map(([a,b])=>offset(head,forward,a,b,.12)));
-  if (Math.cos(turn) > -.12) {
-    face(proctor?'#9b8a7b':'#756558',[[-.17,.12],[-.10,.19],[.09,.20],[.16,.13],[.16,-.12],[.055,-.21],[-.10,-.17]]);
+  const [toX,,toZ] = direction(camera.x-floor[0],camera.z-floor[2]);
+  if (forward[0]*toX+forward[2]*toZ > -.12) {
+    face(position?'#a28c80':proctor?'#9b8a7b':'#756558',[[-.17,.12],[-.10,.19],[.09,.20],[.16,.13],[.16,-.12],[.055,-.21],[-.10,-.17]]);
     face('#2b2229',[[-.12,.056],[-.032,.043],[-.044,.003],[-.13,.015]]);
     face('#2b2229',[[.034,.048],[.121,.071],[.12,.014],[.043,.002]]);
     face('#382a2c',[[-.060,-.074],[.069,-.075],[.054,-.125],[-.054,-.116]]);
@@ -447,6 +442,15 @@ function walker(progress,time,turn,proctor=false,floorY=-1.34) {
     const b = offset(a,forward,.03,-.13-(i%2)*.16,.04);
     limb(a,b,.033,.007,'#2a2427');
   }
+}
+function pitWalker(time) {
+  const room = run.room, [x,y,z] = walkerInPeat;
+  const phase = bogStare(room);
+  const face = phase === 'listening' ? 1 : phase === 'turning' ? ease(1-(room.stareAt-room.age)/walkerTurnTime) :
+    1-ease((room.age-room.stareUntil)/.7);
+  const toward = Math.atan2(camera.x-x,z-camera.z);
+  const sway = phase === 'away' ? Math.sin(time*.61)*.15 : 0;
+  walker(mix(.24,.08,face),time,toward+Math.PI*(1-face)+sway,false,[x,y+face*.39,z]);
 }
 function anglerLure(x,y,size,time) {
   const beat = Math.sin(time*3.7);
@@ -693,7 +697,7 @@ function renderScene(time) {
   } else if (run.mode === 'title' || (level===0 && run.courseAge<4.7 && run.mode==='running') || (t>0 && t<2.35)) {
     walker(t>0?ease(t/2.6)*.72:0,time,0,true);
   } else if (level === 3) {
-    walker(.22+.085*Math.sin(time*.7),time,Math.sin(time)*.73,false,-2.79);
+    pitWalker(time);
   }
   if (level === 1) swimmingAngler(time);
   if (level === 4) suspendedRoom(time);
@@ -707,7 +711,7 @@ function renderScene(time) {
     }
   }
   if (!run.room?.crossing) desk(level);
-  if (level === 4) tetherClamps();
+  if (level === 4) { tetherClamps(); looseBeam(time); }
   floodFloor(time,true);
   livingRoots(time);
   peatHand();

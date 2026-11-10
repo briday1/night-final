@@ -1,8 +1,12 @@
 'use strict';
 
 const waterAtPaper = .70;
+const pumpWalkTime = 2.75;
+const pumpZ = 3.84;
 const rootKeys = ['KeyQ','KeyE','KeyZ','KeyC'];
 const rootLife = 9.5;
+const walkerInPeat = [-1.70,-2.72,6.54];
+const walkerTurnTime = 1.7;
 const bogStations = [[0,0],[-2.14,2.15],[1.96,3.24],[.18,4.56]];
 const bridgePlans = [
   [0b101,0b011,0b110,0b100],
@@ -27,20 +31,23 @@ const circuitButtons = [...$('circuit-grid').querySelectorAll('button')];
 function openRoom(id) {
   switch (id) {
     case 'abyss':
-      return {id,age:0,water:.30,strokeAt:-1,surgeAt:7,surgingUntil:0,submerged:0};
+      return {id,age:0,water:.40,strokeAt:-1,surgeAt:8.5,surgingUntil:0,submerged:0,
+        warned:false,trip:{position:0,goal:0,stopped:false,stepAt:0,exposure:0}};
     case 'fungal':
-      return {id,age:0,roots:[null,null,null,null],cutAt:[-5,-5,-5,-5],spawnAt:2.5,lastRoot:-1};
+      return {id,age:0,roots:[null,null,null,null],cutAt:[-5,-5,-5,-5],spawnAt:2.5,lastRoot:-1,
+        bloom:null,bloomAt:10.8,shutAt:-5,sporesAt:-5};
     case 'bog':
-      return {id,station:0,crossing:null,failed:new Set()};
+      return {id,age:0,station:0,crossing:null,failed:new Set(),
+        stareAt:8.4,stareUntil:-5,warned:false,heard:false};
     case 'eclipse':
-      return {id,age:0,circuit:newCircuit(0),lift:.12,anchors:0};
+      return {id,age:0,circuit:newCircuit(0),lift:.12,anchors:0,beam:null,beamAt:11.4};
     default:
       return null;
   }
 }
 function roomBlock() {
   const room = run.room;
-  if (room?.id === 'abyss' && room.water >= waterAtPaper) return 'Paper submerged. Work the pump.';
+  if (room?.id === 'abyss' && room.water >= waterAtPaper) return 'Paper submerged. Walk to the wall pump.';
   if (room?.id === 'fungal' && room.roots.some(root => root?.age >= 6.65)) return 'Roots cover the ink. Cut a knot.';
   if (room?.crossing) return 'Cross to the next packet.';
   if (room?.circuit) return 'Restore power to the desk tether.';
@@ -49,29 +56,99 @@ function roomBlock() {
 function packetProgress() {
   return run.page/(questionsPerCourse-1);
 }
+function pumpAway() {
+  const trip = run.room?.trip;
+  return Boolean(trip && (trip.goal || trip.position));
+}
+function pumpInTransit() {
+  const trip = run.room?.trip;
+  return trip && trip.position !== trip.goal;
+}
+function floodPhase(room) {
+  if (room.age < room.surgingUntil) return 'sweep';
+  return room.surgeAt-room.age < 2.25 ? 'warning' : 'quiet';
+}
+function returnFromPump() {
+  if (!pumpAway()) return false;
+  const trip = run.room.trip;
+  if (trip.goal === 1) {
+    trip.goal = 0;
+    trip.stopped = false;
+    run.view = trip.position ? 'left' : 'desk';
+  }
+  return true;
+}
 function pump() {
   const room = run.room;
-  if (run.mode !== 'running' || room?.id !== 'abyss' || room.age < room.strokeAt+.40) return;
-  room.strokeAt = room.age;
-  room.water = Math.max(.12,room.water-.185);
-  room.submerged = 0;
-  tone(131,.27,.27,.25,'triangle',65);
-  noise(680,.38,.31,.3,0,'lowpass');
+  if (run.mode !== 'running' || room?.id !== 'abyss') return;
+  const trip = room.trip;
+  if (!pumpAway()) {
+    trip.goal = 1;
+    trip.stopped = false;
+    run.view = 'right';
+  } else if (pumpInTransit()) {
+    trip.stopped = !trip.stopped;
+  } else if (run.view !== 'right') {
+    look('right');
+  } else if (focused() && room.age >= room.strokeAt+.42) {
+    room.strokeAt = room.age;
+    room.water = Math.max(.12,room.water-.32);
+    room.submerged = 0;
+    tone(131,.34,.30,.25,'triangle',65);
+    noise(680,.46,.34,.3,0,'lowpass');
+  }
   renderUI();
+}
+function tickPumpWalk(room,dt,phase) {
+  const trip = room.trip;
+  if (phase !== 'sweep') trip.exposure = 0;
+  if (!pumpInTransit() || trip.stopped) return;
+  if (phase === 'sweep' && trip.exposure < .56) {
+    trip.exposure += dt;
+    if (trip.exposure >= .56) {
+      trip.stopped = true;
+      loseComposure('The Angler followed the splash. Stay still when the light sweeps.',-.62);
+      return;
+    }
+  }
+  const next = trip.position+Math.sign(trip.goal-trip.position)*dt/pumpWalkTime;
+  trip.position = clamp(next);
+  if (room.age >= trip.stepAt) {
+    trip.stepAt = room.age+.43;
+    noise(645,.25,.25,trip.position*.6-.3,0,'lowpass');
+    tone(109,.21,.14,0,'sine',65);
+  }
+  if (trip.position === 0) {
+    run.view = 'desk';
+    notice('Back at the desk. The paper is still here.',2.4);
+  }
+  if (trip.position === 1) {
+    run.view = 'right';
+    notice('Pull the pump with E. Return to your desk with S.',3.4);
+  }
 }
 function tickFlood(room,dt) {
   room.age += dt;
   const pressure = packetProgress();
   if (room.age >= room.surgeAt) {
-    room.surgingUntil = room.age+mix(1.9,2.65,pressure);
-    room.surgeAt += mix(13.3,8.1,pressure);
+    room.surgingUntil = room.age+mix(1.75,2.18,pressure);
+    room.surgeAt = room.age+mix(14.2,10.2,pressure);
+    room.warned = false;
     noise(560,2.2,.51,-.69,0,'lowpass');
     tone(76,1.16,.26,-.7,'sine',43);
   }
-  const rate = room.age < room.surgingUntil ? mix(.093,.14,pressure) : mix(.033,.054,pressure);
+  const phase = floodPhase(room);
+  if (phase === 'warning' && !room.warned) {
+    room.warned = true;
+    tone(295,.83,.29,-.78,'sine',87);
+    noise(840,1.1,.24,-.78,.13,'lowpass');
+  }
+  const rate = phase === 'sweep' ? mix(.092,.131,pressure) : mix(.023,.038,pressure);
   room.water = clamp(room.water+rate*dt);
-  room.submerged = room.water > .94 ? room.submerged+dt : 0;
-  if (room.submerged >= 1.95) {
+  tickPumpWalk(room,dt,phase);
+  if (run.mode !== 'running') return;
+  room.submerged = room.water > .94 && !pumpAway() ? room.submerged+dt : 0;
+  if (room.submerged >= 3.25) {
     room.water = .54;
     room.submerged = 0;
     loseComposure('The Angler lunged over the submerged desk.',-.65);
@@ -79,12 +156,36 @@ function tickFlood(room,dt) {
 }
 function cutRoot(index) {
   const room = run.room;
-  if (run.mode !== 'running' || room?.id !== 'fungal' || !room.roots[index] || !focused()) return;
+  if (run.mode !== 'running' || room?.id !== 'fungal' || !room.roots[index] || !deskReady()) return;
   room.roots[index] = null;
   room.cutAt[index] = room.age;
   noise(1700,.26,.28,index%2 ? .58 : -.58);
   tone(312,.21,.18,index%2 ? .58 : -.58,'triangle',101);
   renderUI();
+}
+function sealVent() {
+  const room = run.room;
+  if (run.mode !== 'running' || !room?.bloom || run.view !== 'right' || !focused()) return;
+  room.bloom = null;
+  room.shutAt = room.age;
+  room.bloomAt = room.age+mix(15.8,10.4,packetProgress());
+  noise(460,.46,.45,.71,0,'lowpass');
+  tone(225,.27,.22,.71,'triangle',79);
+  notice('Shutter closed. Back to the paper.',2.6);
+  renderUI();
+}
+function tickBloom(room,pressure) {
+  if (!room.bloom && room.age >= room.bloomAt) {
+    room.bloom = {start:room.age,until:room.age+mix(5.1,4.1,pressure)};
+    noise(735,1.48,.43,.78,0,'lowpass');
+    tone(143,1.56,.29,.78,'sawtooth',73,.17);
+  }
+  if (room.bloom && room.age >= room.bloom.until) {
+    room.bloom = null;
+    room.sporesAt = room.age;
+    room.bloomAt = room.age+mix(15.8,10.4,pressure);
+    loseComposure('The Bloom filled the room with spores.',.76);
+  }
 }
 function tickRoots(room,dt) {
   room.age += dt;
@@ -98,6 +199,8 @@ function tickRoots(room,dt) {
     loseComposure('The Bloom released spores across the page.',index%2 ? .70 : -.70);
     if (run.mode !== 'running') return;
   }
+  tickBloom(room,pressure);
+  if (run.mode !== 'running') return;
   if (room.age < room.spawnAt || room.roots.filter(Boolean).length >= (run.page >= 7 ? 3 : 2)) return;
   const open = room.roots.map((root,i) => !root && i !== room.lastRoot ? i : -1).filter(i => i >= 0);
   const index = open[Math.floor(Math.random()*open.length)];
@@ -126,6 +229,7 @@ function plankSupported(station,row,lane) {
 }
 function beginCrossing(room) {
   room.crossing = {path:[],startedAt:run.elapsed,readyAt:run.elapsed+.65,fallUntil:0,failLane:null,lastWake:-1};
+  run.view = 'desk';
   noise(340,.65,.45,0,0,'lowpass');
 }
 function bogWake(room) {
@@ -140,10 +244,11 @@ function bogWake(room) {
 }
 function stepBridge(lane) {
   const room = run.room, crossing = room?.crossing;
-  if (run.mode !== 'running' || !crossing || run.elapsed < crossing.readyAt ||
+  if (run.mode !== 'running' || !crossing || run.view === 'pit' || run.elapsed < crossing.readyAt ||
       crossing.path.length >= bridgePlans[room.station].length) return;
   if (lane === -1) {
     if (!crossing.path.length) return;
+    if (bogNoise('The Walker heard the plank creak.')) return;
     crossing.path.pop();
     crossing.readyAt = run.elapsed+.45;
     noise(430,.18,.24,0,0,'lowpass');
@@ -153,6 +258,7 @@ function stepBridge(lane) {
   const board = `${room.station}/${row}/${lane}`;
   if (Math.abs((crossing.path.at(-1) ?? 1)-lane) > 1) return;
   if (room.failed.has(board)) return;
+  if (bogNoise('The Walker heard the plank creak.')) return;
   const wake = bogWake(room);
   const washed = wake.phase === 'washed' && (wake.mask & (1<<lane));
   if (washed || !plankSupported(room.station,row,lane)) {
@@ -180,8 +286,38 @@ function tickBridge(room) {
       run.elapsed < room.crossing.readyAt) return;
   room.station++;
   room.crossing = null;
+  run.view = 'desk';
   notice('Packet recovered. Put it on the desk.',2.7);
   tone(328,.33,.23,0,'triangle',439);
+}
+function bogStare(room) {
+  if (room.age < room.stareUntil) return 'listening';
+  return room.stareAt-room.age < walkerTurnTime ? 'turning' : 'away';
+}
+function bogNoise(message) {
+  const room = run.room;
+  if (room?.id !== 'bog' || bogStare(room) !== 'listening') return false;
+  if (!room.heard) {
+    room.heard = true;
+    loseComposure(message,-.48);
+  }
+  return true;
+}
+function tickBog(room,dt) {
+  room.age += dt;
+  if (room.age >= room.stareAt) {
+    const pressure = packetProgress();
+    room.stareUntil = room.age+mix(2.55,3.05,pressure);
+    room.stareAt = room.age+mix(14.0,10.8,pressure);
+    room.warned = false;
+    room.heard = false;
+    noise(172,1.14,.30,-.48,0,'lowpass');
+    tone(63,.87,.27,-.48,'triangle',50);
+  } else if (!room.warned && bogStare(room) === 'turning') {
+    room.warned = true;
+    noise(435,1.1,.34,-.48,0,'lowpass');
+  }
+  tickBridge(room);
 }
 function rotatePorts(mask) {
   return ((mask<<1)|(mask>>3))&15;
@@ -219,7 +355,7 @@ function poweredRoute(circuit) {
 }
 function rotateCircuit(index) {
   const room = run.room, circuit = room?.circuit;
-  if (run.mode !== 'running' || !circuit || circuit.complete || !focused()) return;
+  if (run.mode !== 'running' || !circuit || circuit.complete || !deskReady()) return;
   circuit.masks[index] = rotatePorts(circuit.masks[index]);
   Object.assign(circuit,poweredRoute(circuit));
   noise(800,.13,.16,(index%3-1)*.4);
@@ -232,12 +368,42 @@ function rotateCircuit(index) {
   }
   renderCircuit();
 }
+function leanFromBeam(side) {
+  const beam = run.room?.beam;
+  if (run.mode !== 'running' || run.view !== 'up' || !beam || beam.dropped) return;
+  beam.lean = side;
+  noise(560,.25,.22,side*.61,0,'lowpass');
+  renderUI();
+}
+function tickCeiling(room,pressure) {
+  if (!room.beam && room.age >= room.beamAt) {
+    const side = Math.random() < .5 ? -1 : 1;
+    room.beam = {side,starts:room.age,drops:room.age+mix(5.4,4.25,pressure),lean:0,dropped:false};
+    noise(850,1.45,.42,side*.79,0,'lowpass');
+    tone(105,1.35,.31,side*.69,'sawtooth',53);
+  }
+  const beam = room.beam;
+  if (!beam || room.age < beam.drops) return;
+  if (beam.dropped) {
+    if (room.age-beam.drops > .90) room.beam = null;
+    return;
+  }
+  beam.dropped = true;
+  room.beamAt = room.age+mix(16,11,pressure);
+  noise(420,.86,.52,beam.side*.83,0,'lowpass');
+  if (run.view === 'up' && beam.lean === -beam.side && camera.x*beam.lean > .24) {
+    notice('The beam missed. Back to the desk.',2.5);
+  } else loseComposure('A ceiling beam struck the desk.',beam.side*.72);
+}
 function tickTether(room,dt) {
   room.age += dt;
+  tickCeiling(room,packetProgress());
+  if (run.mode !== 'running') return;
   const circuit = room.circuit, floating = circuit && !circuit.complete;
   if (floating && circuit.index > 0) {
     const connected = circuit.powered.length/circuitPaths[circuit.index].length;
-    circuit.pull += dt*(circuit.index === 1 ? .028 : .046)*(1-.48*connected);
+    const ceiling = room.beam && !room.beam.dropped;
+    circuit.pull += dt*(circuit.index === 1 ? .028 : .046)*(1-.48*connected)*(ceiling ? .63 : 1);
     if (circuit.pull >= .72 && !circuit.warned) {
       circuit.warned = true;
       tone(82,1.16,.44,0,'sawtooth',34);
@@ -261,7 +427,7 @@ function tickRoom(dt) {
   switch (room?.id) {
     case 'abyss': tickFlood(room,dt); break;
     case 'fungal': tickRoots(room,dt); break;
-    case 'bog': tickBridge(room); break;
+    case 'bog': tickBog(room,dt); break;
     case 'eclipse': tickTether(room,dt); break;
   }
 }
@@ -276,13 +442,16 @@ function roomPageTurn() {
 }
 function skipRoomCheckpoints() {
   const room = run.room;
-  if (room?.id === 'bog') {
+  if (room?.id === 'abyss') {
+    room.trip.position = room.trip.goal = 0;
+  } else if (room?.id === 'bog') {
     room.crossing = null;
     room.station = bogStations.length-1;
   } else if (room?.id === 'eclipse') {
     room.circuit = null;
     room.lift = 0;
     room.anchors = circuitPaths.length;
+    room.beam = null;
   }
 }
 function deskOffset() {
@@ -292,8 +461,12 @@ function deskOffset() {
   }
   return [0,run.room?.id === 'eclipse' ? run.room.lift : 0,0];
 }
+function pitSight(x,y,z) {
+  const [wx,wy,wz] = walkerInPeat;
+  return {x,y,z,yaw:Math.atan2(wx-x,wz-z),pitch:Math.atan2(wy+1.53-y,Math.hypot(wx-x,wz-z)),reading:false};
+}
 function targetView() {
-  const crossing = run.room?.crossing;
+  const room = run.room, crossing = room?.crossing;
   if (crossing && (run.mode === 'running' || run.mode === 'paused')) {
     const station = run.room.station, row = crossing.path.length;
     const lane = crossing.path.at(-1);
@@ -301,17 +474,35 @@ function targetView() {
     const {dx,dz} = bridgeHeading(station);
     const falling = crossing.fallUntil > run.elapsed;
     const slip = falling ? (crossing.failLane-(lane ?? 1))*.16 : 0;
-    return {x:x-dx*.18+dz*slip,z:z-dz*.18-dx*slip,y:falling?-.43:.04,pitch:falling?-.95:-.88,
-      yaw:Math.atan2(dx,dz),reading:false};
+    const position = {x:x-dx*.18+dz*slip,z:z-dz*.18-dx*slip,y:falling?-.43:.04};
+    if (run.view === 'pit') return pitSight(position.x,position.y,position.z);
+    return {...position,pitch:falling?-.95:-.88,yaw:Math.atan2(dx,dz),reading:false};
   }
-  const view = views[run.view], [x,y,z] = deskOffset();
+  const [x,y,z] = deskOffset();
+  if (run.view === 'pit') return pitSight(x,0,z);
+  const view = views[run.view];
+  if (pumpAway()) {
+    const trip = room.trip, t = trip.position;
+    const walkX = 2.90*clamp(t/.51), walkZ = .28*clamp(t/.51)+2.71*clamp((t-.51)/.49);
+    const bob = pumpInTransit() && !trip.stopped && !reducedMotion ? Math.sin(t*39)*.065 : 0;
+    return {...view,x:walkX,z:walkZ,y:.33*ease(t*8)+bob,reading:false};
+  }
+  if (run.view === 'up' && room?.beam) return {...view,x:room.beam.lean*.56,y:0,z,reading:false};
   const reading = run.view === 'desk';
   return {...view,x,y:(view.y ?? 0)+(reading ? y : 0),z:z+(view.z ?? 0),reading};
+}
+function inspectRoom() {
+  if (run.room?.id === 'bog') look(run.view === 'pit' ? 'desk' : 'pit');
+  else if (run.room?.id === 'eclipse') look(run.view === 'up' ? 'desk' : 'up');
 }
 function roomKey(event) {
   const room = run.room;
   if (!room) return false;
   const key = event.code;
+  if (key === 'KeyR' && (room.id === 'bog' || room.id === 'eclipse')) {
+    if (!event.repeat) inspectRoom();
+    return true;
+  }
   if (room.id === 'abyss' && (key === 'KeyE' || key === 'Space')) {
     if (!event.repeat) pump();
     return true;
@@ -320,10 +511,18 @@ function roomKey(event) {
     if (!event.repeat) cutRoot(rootKeys.indexOf(key));
     return true;
   }
+  if (room.id === 'fungal' && key === 'KeyF') {
+    if (!event.repeat) sealVent();
+    return true;
+  }
   if (room.crossing) {
     const keys = {KeyA:0,ArrowLeft:0,KeyW:1,ArrowUp:1,KeyD:2,ArrowRight:2,KeyS:-1,ArrowDown:-1};
     if (!event.repeat && key in keys) stepBridge(keys[key]);
     return key in keys || /^Digit[1-9]$/.test(key) || key === 'Enter';
+  }
+  if (room.beam && run.view === 'up' && (key === 'Digit1' || key === 'Digit2')) {
+    if (!event.repeat) leanFromBeam(key === 'Digit1' ? -1 : 1);
+    return true;
   }
   if (room.circuit && /^Digit[1-9]$/.test(key)) {
     if (!event.repeat) rotateCircuit(Number(key.at(-1))-1);
@@ -334,21 +533,47 @@ function roomKey(event) {
 function roomCue() {
   const room = run.room;
   switch (room?.id) {
-    case 'abyss':
-      if (room.water >= waterAtPaper) return 'The paper is going under. Pump!';
-      if (room.age < room.surgingUntil) return 'Surge through the broken window.';
-      return room.age < 7 ? 'Tap Pump or E to drain the rising water.' : '';
-    case 'fungal':
+    case 'abyss': {
+      const phase = floodPhase(room);
+      if (phase === 'sweep') return pumpInTransit() && !room.trip.stopped ? 'The light is sweeping. Stop walking · E' : 'The Angler’s light sweeps the water. Stay still.';
+      if (phase === 'warning') return pumpInTransit() && !room.trip.stopped ? 'WINDOW · Stop before the light sweeps · E' : 'The window is glowing. A sweep is coming.';
+      if (pumpInTransit()) return room.trip.stopped ? 'The light is gone. Walk again with E.' : '';
+      if (pumpAway()) return 'Pull the pump until the water drops. S returns to the desk.';
+      return roomBlock() || (room.water > .56 ? 'Water is nearing the paper. E walks to the pump.' : '');
+    }
+    case 'fungal': {
+      if (room.bloom) return run.view === 'right' ? 'Close the shutter before it exhales · F' : 'SERVICE WALL · It’s drawing breath. Look right.';
       return roomBlock() || (room.roots.some(Boolean) ? 'Cut the glowing knots on the paper.' : '');
-    case 'bog':
+    }
+    case 'bog': {
+      const stare = bogStare(room);
+      if (stare === 'listening') return run.view === 'pit' ? 'Facing you. Stay still until it turns away.' : 'The Walker is listening. Keep still. R checks the pit.';
+      if (stare === 'turning') return 'The footsteps stop. Check the Walker · R';
+      if (run.view === 'pit') return 'Its back is turned. R to look down.';
       if (!room.crossing) return '';
       const wake = bogWake(room);
       if (wake.phase === 'warning') return 'The Walker’s wake is coming. Watch the marked planks.';
       if (wake.phase === 'washed') return 'Avoid the submerged planks until the wake passes.';
-      return 'Follow braced planks. A / W / D to step. S to go back.';
+      return 'Follow the brass braces. R looks up at the Walker.';
+    }
+    case 'eclipse': {
+      const beam = room.beam;
+      if (!beam || beam.dropped) return '';
+      if (run.view !== 'up') return 'A beam is coming loose. Look up · R';
+      return beam.lean === -beam.side ? 'Stay leaned until it drops.' :
+        beam.side < 0 ? 'Left beam is splitting. Lean right · 2' : 'Right beam is splitting. Lean left · 1';
+    }
     default:
       return '';
   }
+}
+function roomAlert() {
+  const room = run.room;
+  if (room?.id === 'abyss' && floodPhase(room) !== 'quiet') return 'left';
+  if (room?.bloom) return 'right';
+  if (room?.id === 'bog' && bogStare(room) !== 'away') return 'pit';
+  if (room?.beam && !room.beam.dropped) return 'up';
+  return '';
 }
 function renderRoots(room) {
   const visible = room?.id === 'fungal';
@@ -372,7 +597,7 @@ function renderCircuit() {
   const show = run.mode === 'running' && Boolean(circuit);
   const board = $('circuit');
   board.hidden = !show;
-  board.inert = !show || !focused();
+  board.inert = !show || !deskReady();
   if (!show) { circuitKey = ''; return; }
   const hint = $('circuit-hint');
   write(hint,circuit.index === 0 || circuit.complete ? 'Tap tiles or use keys 1–9.' :
@@ -396,20 +621,41 @@ function renderCircuit() {
 function renderRoomControls(running) {
   const room = running ? run.room : null;
   const flooding = room?.id === 'abyss', crossing = room?.crossing;
-  $('pump-station').hidden = !flooding;
+  const away = flooding && pumpAway(), pumping = away && !pumpInTransit() && run.view === 'right';
+  const handle = $('pump');
+  handle.hidden = !flooding;
+  $('water-gauge').hidden = !flooding;
+  write($('look-desk'),away ? '↓ Return' : '↓ Desk');
+  $('inspect').hidden = !room || !['bog','eclipse'].includes(room.id);
+  $('inspect').dataset.view = room?.id === 'bog' ? 'pit' : 'up';
+  write($('inspect'),room?.id === 'bog' ? 'Pit · R' : 'Ceiling · R');
+  $('seal-vent').hidden = !room?.bloom || run.view !== 'right';
+  $('seal-vent').disabled = !$('seal-vent').hidden && !focused();
+  const lean = room?.beam && !room.beam.dropped && run.view === 'up';
+  $('beam-dodge').hidden = !lean;
+  if (lean) {
+    $('lean-left').setAttribute('aria-pressed',String(room.beam.lean === -1));
+    $('lean-right').setAttribute('aria-pressed',String(room.beam.lean === 1));
+  }
   $('bridge-control').hidden = !crossing;
+  $('bridge-look').toggleAttribute('data-alert',Boolean(crossing && bogStare(room) !== 'away'));
   $('water-on-paper').hidden = !flooding || room.water < .49;
   if (flooding) {
-    const submerged = room.water >= waterAtPaper;
     $('water-on-paper').style.setProperty('--water',Math.max(0,(room.water-.49)/.51)*100+'%');
-    $('pump').toggleAttribute('data-stroking',room.age-room.strokeAt < .22);
-    $('pump').toggleAttribute('data-submerged',submerged);
-    write($('water-gauge'),`Water ${Math.round(room.water*100)}% · ${submerged ? 'paper wet' : room.water>.55 ? 'rising' : 'below desk'}`);
+    handle.toggleAttribute('data-alert',pumpInTransit() && floodPhase(room) !== 'quiet' && !room.trip.stopped);
+    handle.toggleAttribute('data-stroking',room.age-room.strokeAt < .22);
+    handle.disabled = pumping && (!focused() || room.age-room.strokeAt < .42);
+    const action = pumpInTransit() ? room.trip.stopped ? 'Walk' : 'Stop' :
+      pumping ? 'Pull' : away ? 'Face pump' : 'Walk to pump';
+    write(handle,`${action} · E`);
+    $('water-gauge').classList.toggle('danger',room.water >= waterAtPaper);
+    write($('water-gauge'),`Water ${Math.round(room.water*100)}%`);
   }
   if (crossing) {
     const row = crossing.path.length, length = bridgePlans[room.station].length;
     write($('bridge-progress'),`Crossing ${room.station+1} / 3 · ${row} / ${length} planks`);
-    const moving = run.elapsed < crossing.readyAt || row >= length;
+    const moving = run.elapsed < crossing.readyAt || row >= length || run.view === 'pit';
+    write($('bridge-look'),run.view === 'pit' ? 'Planks · R' : 'Walker · R');
     $('bridge-back').disabled = moving || row === 0;
     const lastLane = crossing.path.at(-1) ?? 1;
     const wake = bogWake(room);
@@ -426,6 +672,11 @@ function renderRoomControls(running) {
   renderCircuit();
 }
 $('pump').onclick = pump;
+$('inspect').onclick = inspectRoom;
+$('seal-vent').onclick = sealVent;
+$('bridge-look').onclick = inspectRoom;
+$('lean-left').onclick = () => leanFromBeam(-1);
+$('lean-right').onclick = () => leanFromBeam(1);
 $('bridge-back').onclick = () => stepBridge(-1);
 bridgeButtons.forEach((button,index) => { button.onclick = () => stepBridge(index); });
 rootButtons.forEach((button,index) => { button.onclick = () => cutRoot(index); });

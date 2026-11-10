@@ -46,6 +46,9 @@ function focused() {
   return Math.abs(camera.yaw - target.yaw) < .036 && Math.abs(camera.pitch - target.pitch) < .035 &&
     Math.abs(camera.x-target.x) < .036 && Math.abs(camera.z-target.z) < .036;
 }
+function deskReady() {
+  return run.view === 'desk' && !run.room?.crossing && !pumpAway() && focused();
+}
 function initSound() {
   if (muted) return;
   try {
@@ -122,7 +125,7 @@ function omenPower() {
 function tickOmen() {
   if (run.elapsed < run.nextOmen) return;
   const room = run.room;
-  const busy = run.threat || room?.submerged > 0 ||
+  const busy = run.threat || roomAlert() || room?.submerged > 0 ||
     (room?.id === 'abyss' && room.age < room.surgingUntil) ||
     (room?.crossing && bogWake(room).phase !== 'calm') || room?.circuit?.pull > .65;
   if (busy) { run.nextOmen = run.elapsed+2.8; return; }
@@ -193,8 +196,8 @@ function title() {
 function showHelp() {
   showPanel(`<div class="eyebrow">Examination rules</div><h1>Read first</h1>
     <p>Five subjects. Twelve questions each. Get at least nine right per subject. The ink is permanent, and a fourth miss ends the sitting.</p>
-    <p>Use 1–4 to mark an answer and Enter to advance. In Horse Anatomy, use W/A/D/S or the arrows to look around and listen for the Mare.</p>
-    <p>When the room changes, follow the controls for the pump, root knots, broken floor and desk tether. You regain one point of composure after each subject.</p>
+    <p>Use W/A/D/S or the arrows to look around. At the desk, use 1–4 to mark an answer and Enter to advance. Listen for threats while you write.</p>
+    <p>E walks to and works the flood pump. On the aisle, E stops or resumes your walk. S returns to the desk. R checks the pit or the ceiling in the last two subjects. The on-screen controls work with a mouse or touch.</p>
     <p>Turn in each packet to start its practical. Finish its objective to move on. The whole sitting has an 18-minute limit. Esc pauses.</p>
     <button class="primary" id="back">Return to title</button>`,'help');
   $('back').onclick = title;
@@ -229,9 +232,11 @@ function notice(text,seconds) {
   run.noticeUntil = run.elapsed + seconds;
 }
 function look(view) {
-  if (run.mode !== 'running' || run.room || run.view === view || view === 'up') return;
+  if (run.mode !== 'running' || (run.room?.crossing && view !== 'pit' && view !== 'desk')) return;
+  if (view === 'desk' && returnFromPump()) { renderUI(); return; }
+  if (run.view === view) return;
   run.view = view;
-  noise(940,.19,.14,views[view].yaw);
+  noise(940,.19,.14,views[view]?.yaw ?? -.44);
   renderUI();
 }
 function question() { return run.exam[run.course][run.page]; }
@@ -239,9 +244,10 @@ function prepareQuestion() {
   if (debug) run.answers[run.course][run.page] = question().correct;
 }
 function markAnswer(index) {
-  if (run.mode !== 'running' || run.view !== 'desk' || !focused() || roomBlock() || index < 0 || index >= question().options.length) return;
+  if (run.mode !== 'running' || !deskReady() || roomBlock() || index < 0 || index >= question().options.length) return;
   const entries = run.answers[run.course];
   if (entries[run.page] !== null) return;
+  if (bogNoise('The Walker heard your pencil.')) { renderUI(); return; }
   entries[run.page] = index;
   run.pending = writingTime;
   if (index !== question().correct) run.misses++;
@@ -249,7 +255,7 @@ function markAnswer(index) {
   renderUI();
 }
 function nextQuestion() {
-  if (run.mode !== 'running' || run.view !== 'desk' || !focused() || run.pending || roomBlock() ||
+  if (run.mode !== 'running' || !deskReady() || run.pending || roomBlock() ||
       run.answers[run.course][run.page] === null) return;
   if (run.page + 1 === questionsPerCourse) {
     startPractical();
@@ -285,6 +291,7 @@ function tickExam(dt) {
   tickMare(dt);
 }
 function loseComposure(message,pan) {
+  if (run.hitUntil > run.elapsed) return;
   run.hitUntil = run.elapsed+.52;
   run.health = Math.max(debug ? 1 : 0,run.health-1);
   tone(89,.64,.72,pan,'sawtooth',28);
@@ -645,8 +652,8 @@ function renderUI() {
   if (!running) stage.removeAttribute('data-defense');
   $('trial').hidden = !practical;
   $('debug-skip').hidden = !debug || !running;
-  $('controls').hidden = !running || Boolean(run.room);
-  paper.inert = !running || run.view !== 'desk' || !focused();
+  $('controls').hidden = !running || Boolean(run.room?.crossing);
+  paper.inert = !running || !deskReady();
   renderRoomControls(running);
   if (running) paperUI();
   if (practical) renderTrial();
@@ -663,6 +670,7 @@ function renderUI() {
   write($('nerve'),`Composure ${run.health} / 3`);
   $('nerve').classList.toggle('danger',run.health === 1);
   const approach = run.threat?.approach;
+  const alert = running ? approach?.view || roomAlert() : '';
   const confronting = running && approach && run.view === approach.view && focused();
   stage.toggleAttribute('data-defense',Boolean(confronting && run.threat.defense > 0));
   const cue = running && approach ? confronting ?
@@ -670,10 +678,11 @@ function renderUI() {
     approach.tell : running ? (run.hitUntil > run.elapsed ? run.notice :
       roomCue() || (run.noticeUntil > run.elapsed ? run.notice : '')) : '';
   write($('cue'),cue);
+  $('cue').toggleAttribute('data-alert',Boolean(alert));
   for (const button of lookButtons) {
     const view = button.dataset.view;
     button.setAttribute('aria-pressed',String(view === run.view));
-    button.toggleAttribute('data-alert',view === approach?.view);
+    button.toggleAttribute('data-alert',view === alert);
   }
 }
 function screenInput(event) {
@@ -760,7 +769,7 @@ window.addEventListener('blur',() => {
 });
 document.addEventListener('visibilitychange',() => { if (document.hidden && inSitting()) pause(); });
 for (const type of ['selectstart','dragstart','contextmenu']) stage.addEventListener(type,event => event.preventDefault());
-for (const button of lookButtons) button.onclick = () => look(button.dataset.view);
+for (const button of lookButtons) if (button.id !== 'inspect') button.onclick = () => look(button.dataset.view);
 $('sound').onclick = soundToggle;
 $('pause').onclick = pause;
 $('next').onclick = nextQuestion;
@@ -792,12 +801,14 @@ function frame(now) {
     camera.y = mix(camera.y,view.y ?? 0,blend);
     camera.z = mix(camera.z,view.z,blend);
     camera.lean = mix(camera.lean,view.reading ? 1 : 0,blend);
-    camera.walking = mix(camera.walking,run.room?.crossing ? 1 : 0,blend);
+    const walking = run.room?.crossing || (pumpInTransit() && !run.room.trip.stopped);
+    camera.walking = mix(camera.walking,walking ? 1 : 0,blend);
     camera.roll = reducedMotion ? 0 : run.shift ? Math.sin(run.shift.time*26)*.021*(1-ease(run.shift.time/3.3)) :
       run.cinematic && run.cinematic.time > 2.4 && run.cinematic.time < 5 ?
         Math.sin(run.cinematic.time*28)*.027 : 0;
   }
-  const readingFocal = run.room?.circuit ? Math.min(198,canvas.width*.59) : Math.min(224,canvas.width*.66);
+  const circuit = run.room?.circuit, shortScreen = stageHeight <= 450;
+  const readingFocal = Math.min(shortScreen ? 184 : circuit ? 198 : 224,canvas.width*(circuit ? .56 : .62));
   const roomFocal = run.mode === 'ending' ? 267 : Math.min(267,canvas.width*.96);
   focal = mix(mix(roomFocal,readingFocal,camera.lean),Math.min(207,canvas.width*.72),camera.walking);
   renderUI();

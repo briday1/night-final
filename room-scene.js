@@ -36,6 +36,14 @@ function shatteredWindow(level,time) {
   shape('#6d5b53',[[-3.91,.87,4.05],[-3.72,.44,4.13],[-3.61,-.58,4.57],[-3.84,-.63,4.45]]);
   if (level !== 1) return;
   const room = run.room;
+  const glow = floodPhase(room);
+  if (glow !== 'quiet') {
+    const lure = screenPoint([-3.83,.62,3.80]);
+    if (lure) {
+      disk('#b5efbb42',lure[0],lure[1],glow === 'sweep' ? 16 : 10,9);
+      disk('#d0ffd3',lure[0],lure[1],glow === 'sweep' ? 5 : 3,7);
+    }
+  }
   const force = phase*(room.age < room.surgingUntil ? 1 : .45);
   for (let i=0;i<8;i++) {
     const z = 2.54+i*.38, y = .32+Math.sin(i*2.8)*.17;
@@ -73,6 +81,12 @@ function floodFloor(time,overDesk=false) {
     }
   }
   if (level !== 1) return;
+  if (floodPhase(run.room) === 'sweep') {
+    const sweep = clamp(1-(run.room.surgingUntil-run.room.age)/mix(1.75,2.18,packetProgress()));
+    const y = surface+.013, z = mix(.7,6.0,sweep);
+    shape('#b6efd347',[[-3.89,y,3.62],[3.93,y,z-.91],[3.93,y,z+.84],[-3.89,y,3.97]]);
+    shape('#dcffcc4f',[[-3.89,y,3.77],[3.92,y,z-.10],[3.92,y,z+.19],[-3.89,y,3.85]]);
+  }
   front('#326c766b',-4,surface-.04,4,surface+.036,6.94);
   side('#79a8a695',-3.93,minZ,surface-.01,6.95,surface+.024);
   for (let i=0;i<4;i++) {
@@ -85,12 +99,35 @@ function floodFloor(time,overDesk=false) {
 function swimmingAngler(time) {
   const room = run.room;
   if (room.water < .37 || run.trial || run.shift) return;
-  const near = ease((room.water-.37)/.62);
+  const near = clamp(ease((room.water-.37)/.62)+(floodPhase(room) === 'sweep' ? .19 : 0));
   const c = cameraPoint([mix(-3.54,-.39,near)+Math.sin(time*.79)*.31,waterHeight()+.11,
     mix(5.47,2.24,near)+Math.sin(time*1.39)*.21]);
   if (c[2] < .20) return;
   const [x,y] = project(c);
   angler(x,y,(.43+.34*near)*focal/c[2],time,near);
+}
+function wallPump(room) {
+  const z = pumpZ;
+  side('#1d2830',3.94,z-.55,-1.16,z+.53,1.17);
+  side('#5b6d67',3.937,z-.49,-1.08,z+.47,.89);
+  side('#314347',3.933,z-.43,-1.02,z+.41,.81);
+  drawSign(pumpSign,'#c6d2a6');
+  const metal = ['#40575a','#293c43','#89938a'];
+  block(3.61,-1.24,z-.12,3.90,.40,z+.15,metal);
+  block(3.55,-.33,z-.20,3.91,.06,z+.21,['#6a7b74','#39494a','#a1a594']);
+  block(3.57,-.25,z+.13,3.89,-.14,z+.43,metal);
+  block(3.70,-1.28,z+.31,3.87,-.14,z+.46,metal);
+  const dial = radius => regularPoints(z,.55,radius,10).map(([dz,y])=>[3.724,y,dz]);
+  shape('#202d33',dial(.236));
+  shape('#b7bb96',dial(.178));
+  const angle = mix(3.95,6.62,room.water);
+  worldLine(room.water >= waterAtPaper ? '#9c463b' : '#304f54',[3.718,.55,z],
+    [3.718,.55+Math.sin(angle)*.14,z+Math.cos(angle)*.14],2);
+  const stroke = room.age-room.strokeAt;
+  const drop = stroke < .37 ? Math.sin(stroke/.37*Math.PI)*.52 : 0;
+  const grip = [3.39,.49-drop,z-.32];
+  limb([3.63,-.055,z-.05],grip,.044,.029,'#48585a','#aab5a1');
+  limb([grip[0],grip[1],grip[2]-.12],[grip[0],grip[1],grip[2]+.12],.067,.057,'#665548','#c3a778');
 }
 function growthLine(path,color,width,growth=1) {
   for (let i=1;i<path.length;i++) {
@@ -129,7 +166,31 @@ function colonizedWall(level,time) {
     [[2.69,-1.04,2.44],.47],[[1.92,-1.02,2.77],.25],[[3.61,1.22,5.40],.33]
   ];
   for (const [position,size] of caps) shelfFungus(position,size*phase,time,true);
-  if (level === 2) bloom(.16+.11*Math.sin(time*1.7),time);
+  if (level === 2) {
+    const room = run.room;
+    const pressure = room.bloom ? ease((room.age-room.bloom.start)/(room.bloom.until-room.bloom.start)) : 0;
+    bloom(.13+.07*Math.sin(time*1.7)+pressure*.73,time);
+    ventShutter(room);
+  }
+}
+function ventShutter(room) {
+  const elapsed = room.age-room.shutAt;
+  const closed = ease(elapsed/.33)*(1-ease((elapsed-1.75)/.57));
+  side('#26212d',3.65,2.85,.64,3.74,1.24);
+  side('#796473',3.64,2.88,.67,3.71,1.21);
+  side('#301f38',3.63,2.93,.72,3.66,1.16);
+  for (let i=0;i<4;i++) {
+    const y = .73+i*.107;
+    side('#554452',3.624,2.96,y,3.63,y+.035+closed*.074);
+  }
+  side(room.bloom ? '#ffb579' : '#816b77',3.622,2.92,1.25,3.05,1.33);
+  limb([3.61,.81,3.54],[3.53,.68+closed*.29,3.62],.039,.028,'#4b393f','#bf9780');
+  const age = room.age-room.sporesAt;
+  if (age > 1.8) return;
+  for (let i=0;i<36;i++) {
+    const p = screenPoint([3.55-age*(1.13+(i%7)*.25),.21+(i%11)*.11+age*.17,3.13+(i%13)*.14]);
+    if (p) box(`rgba(219,165,186,${.61*(1-age/1.8)})`,p[0],p[1],2+i%3,1+i%2);
+  }
 }
 function livingRoots(time) {
   if (run.room?.id !== 'fungal') return;
@@ -281,6 +342,22 @@ function tetherClamps() {
     flat('#4d3c42',x+.023,1.79,x+.060,1.85,-.566+lift);
   }
 }
+function looseBeam(time) {
+  const room = run.room, beam = room.beam;
+  if (!beam || run.mode !== 'running') return;
+  const charge = clamp((room.age-beam.starts)/(beam.drops-beam.starts));
+  const fall = ease((room.age-beam.drops)/.58);
+  const x = beam.side*.73, y = 1.97-charge*.39-fall*2.87;
+  const drift = reducedMotion ? 0 : Math.sin(time*8)*charge*.046;
+  block(x-.31+drift,y-.21,1.12,x+.31+drift,y,2.54,['#58404e','#2f2638','#756072']);
+  front('#bd8b85',x-.28+drift,y-.155,x+.29+drift,y-.12,1.118);
+  worldLine('#e9ad91',[x-.20+drift,y-.204,1.13],[x+.07+drift,y-.205,1.79],2);
+  for (let i=0;i<9;i++) {
+    const t = (room.age*1.1+i*.127)%1;
+    const p = screenPoint([x-.24+i*.055,1.93-t*(.49+fall*1.78),1.27+(i%4)*.20]);
+    if (p) box(i%2?'#e9b39e9e':'#78616fa6',p[0],p[1],2,2);
+  }
+}
 
 const hallDoorX = 1.93;
 const seatRows = [[2.52,1.78],[3.88,1.90],[5.18,1.75]];
@@ -295,9 +372,11 @@ const signGlyphs = {
   M:'#...#/##.##/#.#.#/#.#.#/#...#/#...#/#...#',
   N:'#...#/##..#/##..#/#.#.#/#..##/#..##/#...#',
   O:'.###./#...#/#...#/#...#/#...#/#...#/.###.',
+  P:'####./#...#/#...#/####./#..../#..../#....',
   R:'####./#...#/#...#/####./#.#../#..#./#...#',
   S:'.####/#..../#..../.###./....#/....#/####.',
   T:'#####/..#../..#../..#../..#../..#../..#..',
+  U:'#...#/#...#/#...#/#...#/#...#/#...#/.###.',
   V:'#...#/#...#/#...#/#...#/#...#/.#.#./..#..',
   X:'#...#/#...#/.#.#./..#../.#.#./#...#/#...#',
   0:'.###./#...#/#..##/#.#.#/##..#/#...#/.###.',
@@ -326,6 +405,7 @@ function makeSign(text,[x,y,z],height,[dx,dz]=[1,0]) {
 }
 const chalkboardTitle = makeSign('FINAL EXAMINATION',[-1.47,1.12,6.959],.224);
 const chalkboardRoom = makeSign('ROOM 013',[-1.47,.76,6.959],.14);
+const pumpSign = makeSign('PUMP',[3.933,1.04,pumpZ],.17,[0,-1]);
 function teachingWall(level) {
   const p = palettes[level], chalk = level < 2 ? '#bdbdab' : '#a992a1';
   front('#211e20',-3.69,.12,.77,1.55);

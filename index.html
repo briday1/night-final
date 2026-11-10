@@ -33,10 +33,11 @@ button:focus-visible,a:focus-visible{outline:2px solid #ffdc9f;outline-offset:4p
 .hud .danger,.hud .clock.low{color:#ffaaa0;border-color:#b0574d}
 .look-controls{bottom:15px;left:50%;transform:translateX(-50%);display:flex;align-items:center;justify-content:center;gap:5px;width:max-content;max-width:calc(100% - 16px)}
 .look-controls button{min-width:70px}
-.look-controls button[data-alert]{color:#ffe5c2;border-color:#d88f78;box-shadow:inset 0 0 0 1px #84493e}
+.look-controls button[data-alert],#bridge-look[data-alert]{color:#ffe5c2;border-color:#d88f78;box-shadow:inset 0 0 0 1px #84493e}
 .look-controls button:disabled{opacity:.55}
 .cue,.caption,.trial{text-align:center;left:50%;transform:translateX(-50%);width:max-content;max-width:min(88%,650px);pointer-events:none}
 .cue{top:70px;padding:5px 9px;background:#0c1017dd;margin:0;border-left:2px solid var(--course);font-size:14px;color:#ffdbc0}
+.cue[data-alert]{border-color:#d88874;background:#211721f0}
 .cue:empty{display:none}
 .caption{z-index:4;bottom:12%;margin:0;padding:10px 15px;background:#06090ce8;border-bottom:2px solid var(--course);font-size:clamp(15px,2.2vw,24px);color:#f3e1cb}
 .trial{top:75px;color:#eee3d5;text-shadow:2px 2px #0b0b11;font-size:14px}
@@ -126,20 +127,22 @@ button:focus-visible,a:focus-visible{outline:2px solid #ffdc9f;outline-offset:4p
 @media(max-width:650px) and (max-height:510px){.debug-run .cue{top:81px}}
 @media(prefers-reduced-motion:reduce){.vignette{background:none}#stage.hit .vignette{background:#68241f40}}
 
-.pump-station,.bridge-control{position:absolute;z-index:3;left:50%;bottom:14px;transform:translateX(-50%);width:max-content;
+.beam-dodge,.bridge-control{position:absolute;z-index:3;left:50%;bottom:14px;transform:translateX(-50%);width:max-content;
   max-width:calc(100% - 20px);color:#f1e2d1;text-align:center}
-.pump-station button,.bridge-control button{border:1px solid #8b7666;border-bottom:4px solid #3d2c31;border-radius:0;
+.beam-dodge{bottom:66px;display:flex;gap:4px}
+.beam-dodge button,.bridge-control button{border:1px solid #8b7666;border-bottom:4px solid #3d2c31;border-radius:0;
   background:#201c25;color:#f6e3cd;padding:8px 13px;min-height:42px;font-size:13px;font-weight:bold;text-transform:uppercase}
-.pump-station button{background:#52392b;color:#ffe3ae;border-color:#c3986a;border-bottom-color:#3c2726;min-width:150px}
-.pump-station button[data-stroking]{transform:translateY(3px);border-bottom-width:1px;background:#6b5136}
-.pump-station button[data-submerged]{background:#7b3c35;border-color:#f2ad83}
+.beam-dodge button[aria-pressed=true]{color:#ffe6b8;background:#544153;border-color:#d49da5}
+#pump,#seal-vent{background:#483b31;color:#ffe3ae;border-color:#af8664;border-bottom-color:#553d36}
+#pump[data-stroking]{transform:translateY(2px);background:#6b5136}
+#pump[data-alert]{background:#6d3f38;border-color:#efa88b}
 .room-readout{margin:0 0 5px;padding:2px 8px;background:#10151ce8;color:var(--course);font-weight:bold;font-size:12px}
 #bridge-steps{display:flex;gap:5px;justify-content:center;margin-bottom:3px}
 #bridge-steps button[data-braced]{background:#4a3c30;color:#ffe1a1;border-color:#bd9668;border-bottom-color:#674c39}
 #bridge-steps button[data-wave=warning]{background:#674331;border-color:#eca26b;color:#fff0bb}
 #bridge-steps button[data-wave=washed]{background:#242837;border-color:#766b86;color:#c4b3c9;text-decoration:line-through}
 #bridge-steps button:disabled,#bridge-back:disabled{opacity:.42}
-#bridge-back{padding:3px 10px;min-height:32px;font-size:11px}
+#bridge-back,#bridge-look{padding:3px 10px;min-height:34px;font-size:11px}
 #water-on-paper{position:absolute;inset:0;pointer-events:none;overflow:hidden}
 #water-on-paper::after{position:absolute;content:"";inset:auto 0 0;height:var(--water);background:linear-gradient(#8ed2d48a,#174b679e);
   border-top:3px solid #e5fbdf8f;box-shadow:0 -4px 12px #5ad8d65a}
@@ -180,7 +183,7 @@ button:focus-visible,a:focus-visible{outline:2px solid #ffdc9f;outline-offset:4p
 #circuit-grid span{position:absolute;left:6px;top:3px;font-size:13px;font-weight:bold}
 .circuit-hint{margin:0;font-size:13px;color:#cfafbc}
 .circuit-hint.urgent{color:#ffac83;font-weight:bold}
-@media(max-width:650px){.pump-station,.bridge-control{bottom:7px}.room-readout{font-size:11px}}
+@media(max-width:650px){.beam-dodge{bottom:55px}.bridge-control{bottom:7px}.room-readout{font-size:11px}}
 </style>
 </head>
 <body>
@@ -188,7 +191,7 @@ button:focus-visible,a:focus-visible{outline:2px solid #ffdc9f;outline-offset:4p
   <canvas id="room" width="576" height="324" aria-label="First-person view of the exam room"></canvas>
   <div class="vignette"></div>
   <div class="hud" aria-label="Exam status">
-    <span class="course" id="course"></span><span class="clock" id="clock"></span><span id="marks"></span><span id="misses"></span><span id="nerve"></span>
+    <span class="course" id="course"></span><span class="clock" id="clock"></span><span id="marks"></span><span id="misses"></span><span id="nerve"></span><span id="water-gauge" hidden></span>
   </div>
   <div class="utility"><button id="sound" type="button" aria-pressed="true">Sound on</button><button id="pause" type="button">Pause</button>
     <button id="debug-skip" type="button" aria-keyshortcuts="N" title="Skip questions (N)" hidden>Skip questions</button>
@@ -230,8 +233,9 @@ button:focus-visible,a:focus-visible{outline:2px solid #ffdc9f;outline-offset:4p
     <p class="circuit-hint" id="circuit-hint">Tap tiles or use keys 1–9.</p>
   </section>
   <p class="cue" id="cue" role="status"></p>
-  <div class="pump-station" id="pump-station" hidden>
-    <p class="room-readout" id="water-gauge"></p><button id="pump" type="button">Pump handle · E</button>
+  <div class="beam-dodge" id="beam-dodge" aria-label="Lean away from the beam" role="group" hidden>
+    <button id="lean-left" type="button" aria-keyshortcuts="1" aria-pressed="false">← Lean left · 1</button>
+    <button id="lean-right" type="button" aria-keyshortcuts="2" aria-pressed="false">Lean right · 2 →</button>
   </div>
   <div class="bridge-control" id="bridge-control" hidden>
     <p class="room-readout" id="bridge-progress"></p>
@@ -239,12 +243,16 @@ button:focus-visible,a:focus-visible{outline:2px solid #ffdc9f;outline-offset:4p
       <button type="button">A · Left</button><button type="button">W · Center</button><button type="button">D · Right</button>
     </div>
     <button id="bridge-back" type="button">S · Step back</button>
+    <button id="bridge-look" type="button" aria-keyshortcuts="R">Walker · R</button>
   </div>
   <nav class="look-controls" id="controls" aria-label="Look controls">
     <button type="button" data-view="left">← Window</button>
     <button type="button" data-view="front">↑ Hall</button>
     <button type="button" data-view="right">→ Wall</button>
-    <button type="button" data-view="desk">↓ Desk</button>
+    <button id="look-desk" type="button" data-view="desk">↓ Desk</button>
+    <button id="inspect" type="button" data-view="up" aria-keyshortcuts="R" hidden>Ceiling · R</button>
+    <button id="pump" type="button" aria-keyshortcuts="E" hidden>Walk to pump · E</button>
+    <button id="seal-vent" type="button" aria-keyshortcuts="F" hidden>Shutter · F</button>
   </nav>
   <section class="trial" id="trial" aria-label="Practical exam" hidden>
     <strong id="trial-title"></strong><p id="trial-brief"></p><p id="trial-score" role="status"></p>

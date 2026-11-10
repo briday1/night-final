@@ -29,7 +29,7 @@ const courses = [
   },
   {
     id: 'abyss', number: '02', title: 'Abyssal Biology', accent: '#88d3d1',
-    intro: 'The bilge pump rattles beside the paper. The Angler has come in with the water.',
+    intro: 'The pump is by the service door. Wait for the Angler’s light to pass before you walk.',
     shift: 'The window breaks inward. Water hits the legs of the desk.',
     study: 'The twilight zone runs from about 200 to 1,000 meters, the midnight zone from 1,000 to 4,000, the abyss from 4,000 to 6,000, and the hadal zone deeper still. Pressure rises as you descend. Marine snow is sinking organic debris. At some vents, microbes use chemical energy. Bioluminescence is light made by a chemical reaction. Anglerfish lure prey. Photophores are light organs. A whale fall feeds seafloor organisms.',
     practical: {id:'beam',view:'left',title:'Searchlight',brief:'Move the light with your mouse, finger or arrow keys. Follow the angler until it dives.',goal:3.6,buttons:[]},
@@ -55,7 +55,7 @@ const courses = [
   },
   {
     id: 'fungal', number: '03', title: 'Fungal Ecology', accent: '#c0a8e4',
-    intro: 'Cut the root knots before they cover the ink. The Bloom is still growing.',
+    intro: 'Cut the knots on the paper. When you hear it inhale, check the service wall.',
     shift: 'The service wall bursts. A mat of roots crawls out of the opening.',
     study: 'A hypha is a filament. A network of hyphae is mycelium. Mushrooms are spore-bearing fruiting bodies. Gills on many caps bear spores. Fungi include yeasts, and their walls commonly contain chitin. Decomposers release nutrients from dead matter. Mycorrhizae connect fungi and roots, exchanging minerals and water for plant-made sugars. Lichens pair a fungus with a photosynthetic partner. Rust fungi infect living plants.',
     practical: {id:'vents',view:'right',title:'The Spore Manifold',brief:'Shut all three vents. Switch 1 flips A + B. Switch 2 flips B + C. Switch 3 flips C.',goal:3,buttons:['1','2','3']},
@@ -81,7 +81,7 @@ const courses = [
   },
   {
     id: 'bog', number: '04', title: 'Bog Archaeology', accent: '#e7a383',
-    intro: 'The next packets are across the pit. Brass braces mark planks that can hold you.',
+    intro: 'The next packets are across the pit. The Walker can hear a pencil scratch.',
     shift: 'The floor gives. A few planks still reach the other desks.',
     study: 'Peat builds from partly decayed plant matter. Sphagnum moss helps create acidic conditions in many raised bogs. Cold, waterlogged, oxygen-poor peat can preserve skin, hair, clothes, and even a last meal, while acid can remove bone minerals. Radiocarbon dating can estimate the age of suitable organic remains. A find’s depth and nearby objects provide context. Tollund Man was found in Denmark. Excavated wet remains require controlled conservation.',
     practical: {id:'breath',view:'front',title:'The Breath Test',brief:'When it faces you, hold the cloth or Space. Release to breathe as soon as it turns away.',goal:3,buttons:['HOLD']},
@@ -107,7 +107,7 @@ const courses = [
   },
   {
     id: 'eclipse', number: '05', title: 'Eclipse Mechanics', accent: '#dec1fa',
-    intro: 'The desk is pulling free. Connect the tether to hold it down.',
+    intro: 'Connect the tether to hold down the desk. Check above you when the ceiling cracks.',
     shift: 'The hall wall tears away. Loose desks rise toward the open roof.',
     study: 'Solar eclipse: Moon between Earth and Sun at new moon. Lunar eclipse: Earth between Sun and Moon at full moon. The Moon’s orbit is tilted, so most new moons miss the alignment. The umbra is the full shadow, the penumbra a partial shadow, and the antumbra the region where a smaller apparent Moon leaves a ring. The corona is the Sun’s outer atmosphere. Earth’s atmosphere filters light that reaches a totally eclipsed Moon. A Saros is about 18 years.',
     practical: {id:'orrery',view:'front',title:'The Orrery',brief:'Drag the Moon over the Sun. Use − or + to match their rims, then lock the alignment.',goal:1,buttons:['−','+','LOCK']},
