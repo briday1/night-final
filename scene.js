@@ -50,16 +50,29 @@ function clip(points) {
   }
   return output;
 }
-function worldPath(points) {
+function appendWorldPath(points) {
   const visible = clip(points.map(cameraPoint));
   if (visible.length < 3) return false;
-  ctx.beginPath();
-  visible.map(project).forEach(([x,y],i) => i ? ctx.lineTo(x,y) : ctx.moveTo(x,y));
+  visible.forEach((point,i) => {
+    const [x,y] = project(point);
+    if (i) ctx.lineTo(x,y);
+    else ctx.moveTo(x,y);
+  });
   ctx.closePath();
   return true;
 }
+function worldPath(points) {
+  ctx.beginPath();
+  return appendWorldPath(points);
+}
 function shape(color,points) {
   if (!worldPath(points)) return;
+  ctx.fillStyle = color;
+  ctx.fill();
+}
+function drawSign(sign,color) {
+  ctx.beginPath();
+  for (const stroke of sign) appendWorldPath(stroke);
   ctx.fillStyle = color;
   ctx.fill();
 }
@@ -272,6 +285,7 @@ function roomShell(level,opening) {
   }
   if (level < 4) fractures(level);
 }
+const hallSign = makeSign('HALL',[hallDoorX,1.695,6.97],.154);
 function hall(level) {
   const p = palettes[level], x = hallDoorX;
   front('#151417',x-.88,-1.35,x+.88,1.51,6.91);
@@ -282,7 +296,7 @@ function hall(level) {
   front('#0b0d10',x-.49,-1.35,x+.49,1.09,6.85);
   if (level < 3) flat(depth,x-.68,6.67,x+.68,7.1,-1.34);
   front(p.trim,x-.47,1.58,x+.47,1.81);
-  worldText('HALL',point(x,1.645,6.97),p.light,59);
+  drawSign(hallSign,p.light);
   teachingWall(level);
   if (level >= 3) {
     for (let i=0;i<6;i++) {
@@ -317,6 +331,7 @@ function shelfFungus(origin,size,time,lit=false) {
     [x+s*.43,y-s*.34],[x-s*.18,y-s*.32]]);
   for (let i=-3;i<=3;i++) line(lit?'#cdb2cb':'#a887aa',[x+i*s*.16,y+s*.08],[x+i*s*.19,y+s*.20]);
 }
+const serviceSign = makeSign('SERVICE',[3.935,1.69,3.75],.168,[0,-1]);
 function utilityWall(level,time) {
   if (level >= 2) { colonizedWall(level,time); return; }
   const p = palettes[level];
@@ -325,7 +340,8 @@ function utilityWall(level,time) {
   side(p.shadow,3.92,2.64,-.95,4.84,1.30);
   for (let i=0;i<7;i++) side(p.slat,3.91,2.73+i*.30,-.94,2.78+i*.30,1.30);
   side('#807562',3.88,3.53,.05,3.83,.19);
-  worldText('SERVICE',point(3.90,1.64,3.75),p.light,56);
+  side(p.trim,3.94,3.09,1.55,4.41,1.83);
+  drawSign(serviceSign,p.light);
 }
 function desk(level,position=deskOffset(),packet=true) {
   const [x,y,z] = position;

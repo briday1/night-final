@@ -16,7 +16,7 @@ Play at [Night Final](https://briday1.github.io/night-final/) or open `index.htm
 - The room gets more dangerous as the sitting progresses. Surges grow stronger, roots spread faster, wakes swamp later crossings, and later circuits have to be repaired under gravity pull.
 - Turn in each packet to start a practical. Its objective opens the next subject. The exam clock runs for 18 minutes during play. One point of composure returns between subjects.
 - **Esc** pauses. **F11** toggles fullscreen in the desktop app.
-- Add `?debug=1` to the browser URL or start the desktop executable with `--debug-exam` to premark questions. The room mechanics and practicals still have to be played.
+- Choose **Debug run** at the title, add `?debug=1` to the browser URL, or launch the desktop executable with `--debug-exam`. Questions are prefilled. Use **Skip questions** or **N** to jump to the current subject's practical. The clock is off and composure loss can't end the run. Clear the five practicals to see the ending.
 
 ## Desktop build
 

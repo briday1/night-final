@@ -274,6 +274,17 @@ function roomPageTurn() {
     tone(139,.6,.31,0,'sawtooth',41);
   }
 }
+function skipRoomCheckpoints() {
+  const room = run.room;
+  if (room?.id === 'bog') {
+    room.crossing = null;
+    room.station = bogStations.length-1;
+  } else if (room?.id === 'eclipse') {
+    room.circuit = null;
+    room.lift = 0;
+    room.anchors = circuitPaths.length;
+  }
+}
 function deskOffset() {
   if (run.room?.id === 'bog') {
     const [x,z] = bogStations[run.room.station];

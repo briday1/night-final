@@ -284,6 +284,48 @@ function tetherClamps() {
 
 const hallDoorX = 1.93;
 const seatRows = [[2.52,1.78],[3.88,1.90],[5.18,1.75]];
+const signGlyphs = {
+  A:'.###./#...#/#...#/#####/#...#/#...#/#...#',
+  C:'.####/#..../#..../#..../#..../#..../.####',
+  E:'#####/#..../#..../####./#..../#..../#####',
+  F:'#####/#..../#..../####./#..../#..../#....',
+  H:'#...#/#...#/#...#/#####/#...#/#...#/#...#',
+  I:'.###./..#../..#../..#../..#../..#../.###.',
+  L:'#..../#..../#..../#..../#..../#..../#####',
+  M:'#...#/##.##/#.#.#/#.#.#/#...#/#...#/#...#',
+  N:'#...#/##..#/##..#/#.#.#/#..##/#..##/#...#',
+  O:'.###./#...#/#...#/#...#/#...#/#...#/.###.',
+  R:'####./#...#/#...#/####./#.#../#..#./#...#',
+  S:'.####/#..../#..../.###./....#/....#/####.',
+  T:'#####/..#../..#../..#../..#../..#../..#..',
+  V:'#...#/#...#/#...#/#...#/#...#/.#.#./..#..',
+  X:'#...#/#...#/.#.#./..#../.#.#./#...#/#...#',
+  0:'.###./#...#/#..##/#.#.#/##..#/#...#/.###.',
+  1:'..#../.##../..#../..#../..#../..#../.###.',
+  3:'####./....#/....#/.###./....#/....#/####.'
+};
+function makeSign(text,[x,y,z],height,[dx,dz]=[1,0]) {
+  const pixel = height/7, halfWidth = (text.length*6-1)/2;
+  const vertex = (column,row) => {
+    const across = (column-halfWidth)*pixel;
+    return [x+across*dx,y+(3.5-row)*pixel,z+across*dz];
+  };
+  const strokes = [];
+  // Place the letters on the surface before projecting them with the rest of the room.
+  for (const [index,letter] of [...text].entries()) {
+    if (letter === ' ') continue;
+    const rows = signGlyphs[letter].split('/');
+    rows.forEach((row,i) => {
+      for (const ink of row.matchAll(/#+/g)) {
+        const left = index*6+ink.index, right = left+ink[0].length;
+        strokes.push([vertex(left,i),vertex(right,i),vertex(right,i+1),vertex(left,i+1)]);
+      }
+    });
+  }
+  return strokes;
+}
+const chalkboardTitle = makeSign('FINAL EXAMINATION',[-1.47,1.12,6.959],.224);
+const chalkboardRoom = makeSign('ROOM 013',[-1.47,.76,6.959],.14);
 function teachingWall(level) {
   const p = palettes[level], chalk = level < 2 ? '#bdbdab' : '#a992a1';
   front('#211e20',-3.69,.12,.77,1.55);
@@ -292,8 +334,8 @@ function teachingWall(level) {
   front('#627063',-3.55,1.38,.61,1.41,6.969);
   front('#a68763',-3.63,.17,.74,.23,6.961);
   for (let i=0;i<6;i++) front(level?'#4d4f51':'#46594d',-3.42,.35+i*.074,-2.58+i*.18,.36+i*.074,6.963);
-  worldText('FINAL EXAMINATION',[-1.47,1.04,6.959],chalk,96);
-  worldText('ROOM 013',[-1.46,.71,6.959],chalk,55);
+  drawSign(chalkboardTitle,chalk);
+  drawSign(chalkboardRoom,chalk);
   const tallies = 2+Math.min(4,level)+Math.floor(omenPower()*3);
   for (let i=0;i<tallies;i++) front(chalk,-.08+i*.079,.45,-.06+i*.079,.56,6.959);
   front('#d3b590',.36,.23,.49,.26,6.959);

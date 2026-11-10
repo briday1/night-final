@@ -23,7 +23,10 @@ button:focus-visible,a:focus-visible{outline:2px solid #ffdc9f;outline-offset:4p
 .utility button,.look-controls button,.target,.panel button{border:1px solid #6f675c;border-bottom:3px solid #3a342f;border-radius:0;background:#101216eb;color:#f2e8d7;font-weight:700;text-transform:uppercase;font-size:12px;padding:7px 11px;min-height:39px}
 .utility button:hover,.look-controls button:not(:disabled):hover,.target:hover,.panel button:hover{background:#302a26}
 .utility button[aria-pressed=true],.look-controls button[aria-pressed=true]{color:var(--course);border-color:var(--course)}
+#debug-skip{white-space:nowrap;color:#ffddad;border-color:#9f7756}
 .hud{top:12px;left:14px;max-width:calc(100% - 177px);display:flex;flex-wrap:wrap;gap:4px;color:#f0e4d0;text-transform:uppercase;font-size:12px;font-weight:bold;pointer-events:none}
+.debug-run .hud{max-width:calc(100% - 315px)}
+.debug-run :is(#marks,#misses,#nerve){display:none}
 .hud span{padding:6px 8px;background:#0d1014e9;border-bottom:2px solid #4c433a}
 .hud .course{color:var(--course);letter-spacing:.06em}
 .hud .clock{color:#ffc487}
@@ -110,6 +113,8 @@ button:focus-visible,a:focus-visible{outline:2px solid #ffdc9f;outline-offset:4p
 @media(max-width:650px){
   .utility{top:7px;right:7px;gap:3px}.utility button{padding:5px 6px;font-size:10px;min-height:34px}
   .hud{top:7px;left:7px;max-width:calc(100% - 120px);font-size:10px}.hud span{padding:4px 6px}
+  .debug-run .hud{max-width:calc(100% - 120px)}
+  #debug-skip{position:absolute;top:calc(100% + 3px);right:0}
   .look-controls{bottom:9px;gap:3px}.look-controls button{min-width:0;padding:5px 7px;font-size:11px;min-height:39px}
   .cue{top:85px;font-size:12px}.trial{top:84px;font-size:12px}.trial p{line-height:1.25}.trial strong{font-size:12px}
   .overlay[data-screen=title]{background:linear-gradient(180deg,#07080be8,#07080b36 64%,#07080be6);place-items:center}
@@ -118,6 +123,7 @@ button:focus-visible,a:focus-visible{outline:2px solid #ffdc9f;outline-offset:4p
   .utility,.hud{top:5px}.cue,.trial{top:54px}.trial p{margin:3px 0}.panel .wordmark{font-size:clamp(45px,12vh,100px)}
   .overlay{padding-top:42px}.overlay[data-screen=title]{padding:22px 7vw}
 }
+@media(max-width:650px) and (max-height:510px){.debug-run .cue{top:81px}}
 @media(prefers-reduced-motion:reduce){.vignette{background:none}#stage.hit .vignette{background:#68241f40}}
 
 .pump-station,.bridge-control{position:absolute;z-index:3;left:50%;bottom:14px;transform:translateX(-50%);width:max-content;
@@ -184,7 +190,9 @@ button:focus-visible,a:focus-visible{outline:2px solid #ffdc9f;outline-offset:4p
   <div class="hud" aria-label="Exam status">
     <span class="course" id="course"></span><span class="clock" id="clock"></span><span id="marks"></span><span id="misses"></span><span id="nerve"></span>
   </div>
-  <div class="utility"><button id="sound" type="button" aria-pressed="true">Sound on</button><button id="pause" type="button">Pause</button></div>
+  <div class="utility"><button id="sound" type="button" aria-pressed="true">Sound on</button><button id="pause" type="button">Pause</button>
+    <button id="debug-skip" type="button" aria-keyshortcuts="N" title="Skip questions (N)" hidden>Skip questions</button>
+  </div>
   <section class="paper" id="paper" aria-label="Exam paper" hidden>
     <div class="paper-head"><span id="packet"></span><span id="item"></span></div>
     <p class="note" id="paper-note">One mark per question.</p>

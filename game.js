@@ -5,7 +5,7 @@ const stage = $('stage'), paper = $('paper'), canvas = $('room');
 const ctx = canvas.getContext('2d', {alpha:false});
 const lookButtons = [...$('controls').querySelectorAll('[data-view]')];
 const targets = [...$('targets').querySelectorAll('button')];
-const debug = new URLSearchParams(location.search).get('debug') === '1';
+let debug = new URLSearchParams(location.search).get('debug') === '1';
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const clamp = n => Math.max(0,Math.min(1,n));
 const mix = (a,b,t) => a + (b - a) * t;
@@ -180,10 +180,12 @@ function title() {
   showPanel(`<div class="title-number">ROOM 013 <span aria-hidden="true">///</span> 23:42</div>
     <h1 class="wordmark">NIGHT<br>FINAL</h1>
     <p class="title-copy">Five papers on the desk. Something in the hall has the answer key.</p>
-    <div class="title-actions"><button class="primary" id="begin">Sit the final ›</button>
+    <div class="title-actions"><button class="primary" id="begin">${debug ? 'Debug run ›' : 'Sit the final ›'}</button>
+    <button id="alternate-run">${debug ? 'Sit the final' : 'Debug run'}</button>
     <button id="instructions">How to play</button><button id="study">Study the syllabus</button></div>
-    <div class="title-footer">${debug ? 'DEBUG SITTING · PRACTICALS ACTIVE' : 'FIRST-PERSON EXAM HORROR'}</div>`,'title');
+    <div class="title-footer">${debug ? 'SKIP QUESTIONS · PRACTICALS ACTIVE' : 'FIRST-PERSON EXAM HORROR'}</div>`,'title');
   $('begin').onclick = start;
+  $('alternate-run').onclick = () => { debug = !debug; start(); };
   $('instructions').onclick = showHelp;
   $('study').onclick = showStudy;
   renderUI();
@@ -259,6 +261,16 @@ function nextQuestion() {
   noise(900,.25,.22,.14);
   renderUI();
 }
+function skipQuestions() {
+  if (!debug || run.mode !== 'running') return;
+  const packet = run.exam[run.course];
+  run.answers[run.course] = packet.map(q => q.correct);
+  run.page = packet.length-1;
+  run.pending = 0;
+  run.misses = 0;
+  skipRoomCheckpoints();
+  startPractical();
+}
 function tickExam(dt) {
   run.courseAge += dt;
   if (run.pending > 0) {
@@ -274,7 +286,7 @@ function tickExam(dt) {
 }
 function loseComposure(message,pan) {
   run.hitUntil = run.elapsed+.52;
-  run.health--;
+  run.health = Math.max(debug ? 1 : 0,run.health-1);
   tone(89,.64,.72,pan,'sawtooth',28);
   noise(840,.45,.64,pan);
   notice(message,3.25);
@@ -625,12 +637,14 @@ function renderUI() {
   stage.classList.toggle('in-run',running || practical || run.mode === 'paused');
   stage.classList.toggle('cinema',cinema);
   stage.classList.toggle('hit',running && run.hitUntil > run.elapsed);
+  stage.classList.toggle('debug-run',debug);
   stage.dataset.course = course().id;
   stage.dataset.view = run.view;
   stage.dataset.trial = practical ? run.trial.spec.id : '';
   stage.style.setProperty('--course',course().accent);
   if (!running) stage.removeAttribute('data-defense');
   $('trial').hidden = !practical;
+  $('debug-skip').hidden = !debug || !running;
   $('controls').hidden = !running || Boolean(run.room);
   paper.inert = !running || run.view !== 'desk' || !focused();
   renderRoomControls(running);
@@ -641,7 +655,7 @@ function renderUI() {
     return;
   }
   write($('course'),`${course().number} · ${course().title}`);
-  write($('clock'),clockText(run.remaining));
+  write($('clock'),debug ? 'Debug · Clock off' : clockText(run.remaining));
   $('clock').classList.toggle('low',run.remaining < 60);
   write($('marks'),`${run.answers[run.course].filter(a => a !== null).length} / 12 marked`);
   write($('misses'),`${run.misses} / ${allowedMisses} missed`);
@@ -729,7 +743,8 @@ window.addEventListener('keydown',event => {
     }
     return;
   }
-  if (roomKey(event)) { event.preventDefault(); }
+  if (debug && code === 'KeyN') { event.preventDefault(); if (!event.repeat) skipQuestions(); }
+  else if (roomKey(event)) { event.preventDefault(); }
   else if (bindings[code]) { event.preventDefault(); look(bindings[code]); }
   else if (digit >= 0) { event.preventDefault(); if (!event.repeat) markAnswer(digit); }
   else if (code === 'Enter' && run.view === 'desk') { event.preventDefault(); if (!event.repeat) nextQuestion(); }
@@ -749,6 +764,7 @@ for (const button of lookButtons) button.onclick = () => look(button.dataset.vie
 $('sound').onclick = soundToggle;
 $('pause').onclick = pause;
 $('next').onclick = nextQuestion;
+$('debug-skip').onclick = skipQuestions;
 write($('sound'),muted ? 'Sound off' : 'Sound on');
 $('sound').setAttribute('aria-pressed',String(!muted));
 
@@ -757,7 +773,7 @@ function frame(now) {
   lastFrame = now;
   if (inSitting()) {
     run.elapsed += dt;
-    run.remaining = Math.max(0,examTime-run.elapsed);
+    if (!debug) run.remaining = Math.max(0,examTime-run.elapsed);
     if (!run.remaining) finish('time');
     else if (run.mode === 'running') {
       tickExam(dt);
