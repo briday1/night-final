@@ -14,6 +14,8 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -29,9 +31,11 @@ jobs:
         run: |
           $exe = (Get-ChildItem dist -Filter 'Night Final.exe' -Recurse | Select-Object -First 1).FullName
           if (-not $exe) { throw 'Windows executable missing' }
-          $game = Start-Process -FilePath $exe -ArgumentList '--smoke-test' -PassThru
+          $env:ELECTRON_ENABLE_LOGGING = '1'
+          $log = Join-Path $env:RUNNER_TEMP 'night-final-launch.log'
+          $game = Start-Process -FilePath $exe -ArgumentList '--smoke-test' -RedirectStandardError $log -PassThru
           if (-not $game.WaitForExit(25000)) { $game.Kill(); throw 'Game launch timed out' }
-          if ($game.ExitCode -ne 0) { throw "Game returned $($game.ExitCode)" }
+          if ($game.ExitCode -ne 0) { Get-Content $log; throw "Game returned $($game.ExitCode)" }
       - uses: actions/upload-artifact@v4
         with:
           name: Night-Final-Windows-x64

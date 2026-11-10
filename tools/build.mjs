@@ -15,7 +15,8 @@ async function bundle() {
   for (const name of scripts) {
     const marker = '<script src="'+name+'"></script>';
     if (!html.includes(marker)) throw new Error('Missing script '+name);
-    const code = (await readFile(join(root,name),'utf8')).replace(/<\/script/gi,'<\\/script');
+    // HTML normalizes line endings before checking each inline script hash.
+    const code = (await readFile(join(root,name),'utf8')).replace(/\r\n?/g,'\n').replace(/<\/script/gi,'<\\/script');
     hashes.push("'sha256-"+createHash('sha256').update(code).digest('base64')+"'");
     html = html.replace(marker,() => '<script>'+code+'</script>');
   }
