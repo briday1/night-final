@@ -134,7 +134,7 @@ function groundShadow([x,,z],radius,opacity) {
   ]);
 }
 const palettes = [
-  {wall:'#3b3d36',left:'#353935',right:'#34312e',floor:'#262b29',ceiling:'#252a28',trim:'#6f6352',slat:'#424639',shadow:'#202526',light:'#d1a674'},
+  {wall:'#4b4d44',left:'#424740',right:'#45443c',floor:'#323a35',ceiling:'#303633',trim:'#786953',slat:'#4e5147',shadow:'#252d2a',light:'#d1a674'},
   {wall:'#224050',left:'#1d3848',right:'#26434c',floor:'#192a37',ceiling:'#172532',trim:'#4e6a6b',slat:'#2b4954',shadow:'#141d2b',light:'#79ccd0'},
   {wall:'#3d3345',left:'#363340',right:'#403145',floor:'#29243b',ceiling:'#252333',trim:'#765f7f',slat:'#503a56',shadow:'#241a31',light:'#b199d2'},
   {wall:'#4b3730',left:'#413332',right:'#4a392e',floor:'#362a27',ceiling:'#2b2324',trim:'#765742',slat:'#5a4235',shadow:'#271b1d',light:'#d7996d'},
@@ -200,21 +200,7 @@ function sky(time,opening) {
   }
   ctx.globalAlpha = 1;
   const t = run.cinematic?.time ?? 0;
-  if (t <= 2.6) return;
-  const appear = ease((t-3.25)/3.3);
-  const scale = .48 + .61*appear + .25*ease((t-9)/3.7);
-  const width = Math.max(w*.94,h*1.28)*scale;
-  const height = width*2/3;
-  const x = w*.50-width*.50 + (reducedMotion ? 0 : Math.sin(t*.68)*w*.019);
-  const y = h*(.06-.15*appear) + Math.sin(t*1.22)*h*.015;
-  ctx.save();
-  ctx.globalAlpha = clamp((opening-.11)*1.6) * (.71+.29*appear);
-  if (proctorSprite.complete && proctorSprite.naturalWidth) ctx.drawImage(proctorSprite,x,y,width,height);
-  else {
-    disk('#25444d',w*.5,y+height*.43,height*.24,12,0,1.25);
-    for (const sign of [-1,1]) disk('#ecac5e',w*.5+sign*height*.075,y+height*.39,4,5);
-  }
-  ctx.restore();
+  if (t > 2.6) elderProctor(t,opening);
 }
 function roof(opening,level) {
   const p = palettes[level], breakWidth = level < 3 ? 0 : level === 3 ? .32 : .30+1.06*damagePhase();
@@ -287,30 +273,21 @@ function roomShell(level,opening) {
   if (level < 4) fractures(level);
 }
 function hall(level) {
-  const p = palettes[level];
-  front('#151417',-1.30,-1.35,1.30,1.68,6.91);
-  front(p.trim,-1.21,-1.35,1.21,1.55,6.90);
-  front('#090c11',-1.10,-1.35,1.10,1.44,6.89);
-  const depth = level >= 3 ? '#332121' : '#1f292d';
-  front(depth,-.91,-1.35,.91,1.24,6.86);
-  front('#0b0d10',-.73,-1.35,.73,1.03,6.85);
-  flat(depth,-1.05,6.65,1.05,7.1,-1.34);
-  front(p.trim,-.52,1.74,.52,1.97);
-  worldText('HALL',point(0,1.806,6.97),p.light,66);
-  front('#121718',-3.70,-.32,-1.63,1.21);
-  front(p.trim,-3.65,-.27,-1.69,1.16);
-  front(level>2?'#211f24':'#273331',-3.56,-.17,-1.77,1.07);
-  worldText(course().number+' / 05',point(-2.64,.73,6.96),p.light,48);
-  for (let i=0;i<4;i++) front(p.slat,-3.28,.44-i*.13,-2.10-i*.12,.455-i*.13);
-  front('#1b1719',1.86,.08,3.13,1.37);
-  front('#a79073',1.93,.15,3.06,1.29);
-  worldText('NIGHT',point(2.50,.94,6.96),'#31252b',46);
-  worldText('EXAMINATION',point(2.50,.65,6.96),'#31252b',33);
-  worldText('ROOM 013',point(2.50,.35,6.96),'#57383c',34);
+  const p = palettes[level], x = hallDoorX;
+  front('#151417',x-.88,-1.35,x+.88,1.51,6.91);
+  front(p.trim,x-.81,-1.35,x+.81,1.46,6.90);
+  front('#0a0e13',x-.69,-1.35,x+.69,1.36,6.89);
+  const depth = level >= 3 ? '#332121' : '#202a2e';
+  front(depth,x-.60,-1.35,x+.60,1.20,6.87);
+  front('#0b0d10',x-.49,-1.35,x+.49,1.09,6.85);
+  if (level < 3) flat(depth,x-.68,6.67,x+.68,7.1,-1.34);
+  front(p.trim,x-.47,1.58,x+.47,1.81);
+  worldText('HALL',point(x,1.645,6.97),p.light,59);
+  teachingWall(level);
   if (level >= 3) {
-    for (let i=0;i<8;i++) {
-      const x = -.97+i*.28, y = -.64+Math.sin(i*13)*.24;
-      shape('#24191e',[[x,-1.35,6.82],[x+.35,-1.35,6.82],[x+.23,y,6.82],[x+.06,y+.17,6.82]]);
+    for (let i=0;i<6;i++) {
+      const edge = x-.74+i*.24, y = -.64+Math.sin(i*13)*.24;
+      shape('#24191e',[[edge,-1.35,6.82],[edge+.26,-1.35,6.82],[edge+.20,y,6.82],[edge+.04,y+.17,6.82]]);
     }
   }
 }
@@ -372,16 +349,11 @@ function desk(level,position=deskOffset(),packet=true) {
     timber(.81,-.57,1.35,1.16,-.39,1.74,['#664f42','#3e3435','#8c6f5b']);
     limb([x+.99,y-.40,z+1.57],[x+.95,y+.32-drop,z+1.25],.034,.042,'#625559','#be9672');
     timber(.80,.28-drop,1.20,1.10,.36-drop,1.30,['#79604f','#50413f','#c39066']);
-  } else {
-    timber(-1.12,-.578,1.31,-.76,-.515,1.72,['#443133','#39232c','#7e5d56']);
-    timber(-1.01,-.515,1.46,-.95,-.06,1.54,['#5e493f','#3c333a','#8f7263']);
-    timber(-1.12,-.12,1.34,-.74,-.016,1.68,['#665044','#4d3c3c','#a87a60']);
-    top(palettes[level].light,-1.035,1.43,-.84,1.59,-.016);
   }
 }
 function horse(progress,time,entry) {
   const side = entry === 'left' ? -1 : entry === 'right' ? 1 : 0;
-  const start = side ? [side*3.58,-1.32,4.25] : [.14,-1.32,6.90];
+  const start = side ? [side*3.58,-1.32,4.25] : [hallDoorX-.07,-1.32,6.89];
   const end = [side*.82,-1.32,2.15];
   const floor = mixPoint(start,end,progress**1.28);
   const forward = direction(end[0]-start[0]+.18*Math.sin(progress*5),end[2]-start[2]);
@@ -415,7 +387,7 @@ function horse(progress,time,entry) {
 function walker(progress,time,turn,proctor=false,floorY=-1.34) {
   const z = proctor ? mix(6.75,3.40,progress) : mix(6.88,2.13,progress**1.2);
   const forward = direction(Math.sin(turn),-Math.cos(turn));
-  const floor = [proctor ? .24 : -.05+.18*Math.sin(progress*8),floorY,z];
+  const floor = [proctor ? mix(hallDoorX-.03,.24,progress) : -.05+.18*Math.sin(progress*8),floorY,z];
   const torso = offset(floor,forward,0,.94 + Math.abs(Math.sin(time*4))*progress*.055);
   const shoulders = offset(torso,forward,.025,.52,.08);
   const head = offset(shoulders,forward,-.042,.29,.055);
@@ -685,11 +657,13 @@ function renderScene(time) {
   sky(time,opening);
   if (level === 4 && t < 2.45) parallax(.15+.07*Math.sin(time*.9),time);
   roomShell(level,opening);
+  ceilingFixtures(level,opening,time);
   if (level < 4) hall(level);
   windowView(level,time);
   if (level >= 3) peatPit(level,time);
   floodFloor(time);
   utilityWall(level,time);
+  classroomFurniture(level,time);
   const trial = run.trial;
   if (run.threat || run.retreat) {
     const progress = run.threat ? clamp(run.threat.age/run.threat.limit) :
@@ -720,7 +694,9 @@ function renderScene(time) {
   if (level === 4) tetherClamps();
   floodFloor(time,true);
   livingRoots(time);
+  peatHand();
   dust(time,level,opening);
+  roomShadows(level,time);
   if (t > 12.2) box('rgba(8,8,13,'+ease((t-12.2)/1.9)+')',0,0,canvas.width,canvas.height);
   practicalObjects();
   placeExamSheet();

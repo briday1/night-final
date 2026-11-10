@@ -20,6 +20,12 @@ function shatteredWindow(level,time) {
       const z = start+(i*11%41)/41*(end-start);
       side(i%4?'#1b4458':'#3d7883',-3.90,z,y,z+.10+i%4*.055,y+.038);
     }
+    const shadow = level === 1 ? (run.shift ? ease((run.shift.time-.30)/1.1) : omenPower()) : 0;
+    if (shadow > .08) {
+      const tail = 2.2+shadow*1.45;
+      shape('#080f21b5',[[-3.89,.68,tail-.79],[-3.89,.94,tail+.22],[-3.89,.64,tail+1.10],
+        [-3.89,.21,tail+1.63],[-3.89,.09,tail+.82],[-3.89,.31,tail+.20],[-3.89,-.01,tail-.56]]);
+    }
   }
   ctx.restore();
   for (const [z,y,size] of [[start+.17,1.20,.38],[3.44,1.66,.32],[end-.06,1.32,.48],[end-.31,-.65,.46],[start+.36,-.58,.43]]) {
@@ -273,5 +279,144 @@ function tetherClamps() {
     const x = .81+.123*i;
     flat('#c8a076',x,1.77,x+.082,1.88,-.567+lift);
     flat('#4d3c42',x+.023,1.79,x+.060,1.85,-.566+lift);
+  }
+}
+
+const hallDoorX = 1.93;
+const seatRows = [[2.52,1.78],[3.88,1.90],[5.18,1.75]];
+function teachingWall(level) {
+  const p = palettes[level], chalk = level < 2 ? '#bdbdab' : '#a992a1';
+  front('#211e20',-3.69,.12,.77,1.55);
+  front(p.trim,-3.64,.17,.71,1.50,6.974);
+  front(level === 0 ? '#2d413b' : level === 1 ? '#263943' : '#302631',-3.57,.25,.63,1.42,6.971);
+  front('#627063',-3.55,1.38,.61,1.41,6.969);
+  front('#a68763',-3.63,.17,.74,.23,6.961);
+  for (let i=0;i<6;i++) front(level?'#4d4f51':'#46594d',-3.42,.35+i*.074,-2.58+i*.18,.36+i*.074,6.963);
+  worldText('FINAL EXAMINATION',[-1.47,1.04,6.959],chalk,96);
+  worldText('ROOM 013',[-1.46,.71,6.959],chalk,55);
+  const tallies = 2+Math.min(4,level)+Math.floor(omenPower()*3);
+  for (let i=0;i<tallies;i++) front(chalk,-.08+i*.079,.45,-.06+i*.079,.56,6.959);
+  front('#d3b590',.36,.23,.49,.26,6.959);
+  front('#807365',2.95,.19,3.77,1.15,6.969);
+  front('#64584e',3.00,.24,3.72,1.09,6.964);
+  front('#ada17a',3.12,.47,3.40,.97,6.958);
+  front('#a48166',3.43,.29,3.65,.76,6.958);
+  for (let i=0;i<4;i++) {
+    front('#675f55',3.16,.62+i*.071,3.37,.637+i*.071,6.956);
+  }
+  const center = [-1.48,1.81,6.966], x = center[0], y = center[1];
+  const dial = r => regularPoints(x,y,r,12).map(([a,b])=>[a,b,6.961]);
+  shape('#29272a',dial(.212));
+  shape(level<2 ? '#c8b99c' : '#8e7d82',dial(.177));
+  for (let i=0;i<4;i++) {
+    const a = Math.PI*.5*i, bx = x+Math.cos(a)*.14, by = y+Math.sin(a)*.14;
+    front('#65554b',bx-.016,by-.016,bx+.016,by+.016,6.958);
+  }
+  const minute = Math.PI*.5-(42+run.elapsed/60)*Math.PI/30;
+  worldLine('#534743',center,[x+Math.cos(minute)*.127,y+Math.sin(minute)*.127,6.955]);
+  worldLine('#534743',center,[x-.029,y+.090,6.955]);
+}
+function emptyDesk(x,y,z,level,chair=true) {
+  const position = cameraPoint([x,y-.78,z]);
+  if (position[2] < .20) return;
+  const [px,py] = project(position), margin = focal*1.22/position[2];
+  if (px+margin < 0 || px-margin > canvas.width || py+margin < 0 || py-margin > canvas.height) return;
+  const edge = ['#574d4a','#404b51','#50404d','#533d3d','#584658'][level];
+  const wood = ['#a17b58','#63828a','#825d77','#83604a','#865f85'][level];
+  const top = (color,x1,z1,x2,z2,at) => flat(color,x+x1,z+z1,x+x2,z+z2,y+at);
+  const frame = (a,b,c,d,e,f,palette) => block(x+a,y+b,z+c,x+d,y+e,z+f,palette);
+  const metal = [edge,'#30353a','#7c7d74'];
+  if (chair) {
+    for (const left of [-.31,.28]) {
+      frame(left,-1.34,-.69,left+.037,-.95,-.65,metal);
+      frame(left,-1.34,-.30,left+.037,-.95,-.26,metal);
+    }
+    frame(-.35,-.98,-.72,.35,-.89,-.25,['#56463f',edge,wood]);
+    for (const left of [-.30,.27]) frame(left,-.93,-.69,left+.038,-.49,-.65,metal);
+    frame(-.37,-.65,-.71,.37,-.41,-.65,['#685041',edge,wood]);
+    front('#b08766',x-.30,y-.49,x+.31,y-.466,z-.714);
+  }
+  for (const left of [-.52,.46]) for (const back of [-.23,.35]) {
+    frame(left,-1.34,back,left+.040,-.64,back+.041,metal);
+  }
+  frame(-.57,-.76,-.27,.56,-.59,.43,['#5b4843',edge,wood]);
+  top('#ba94707a',-.55,-.23,.54,-.205,-.585);
+  top('#4d403a81',-.55,.34,.54,.36,-.585);
+}
+function classroomFurniture(level,time) {
+  if (level > 2) return;
+  const pieces = seatRows.flatMap(([z,x],row) => [-1,1].map(side => {
+    const surge = level === 1 && run.room.age < run.room.surgingUntil;
+    const drift = level === 1 ? run.room.water*(.15+.07*row) : level === 2 ? .10*(2-row) : 0;
+    const sway = surge && !reducedMotion ? Math.sin(time*3.3+row)*.06 : 0;
+    return [side*(x+drift+sway),0,z+drift*side];
+  })).sort((a,b)=>cameraPoint(b)[2]-cameraPoint(a)[2]);
+  const wood = level === 0 ? '#8a6954' : level === 1 ? '#526770' : '#73576a';
+  block(-2.75,-1.34,5.89,-.45,-.66,6.49,['#55444a','#40373a',wood]);
+  block(-2.83,-.69,5.84,-.36,-.58,6.52,['#634c42','#46383b',wood]);
+  block(-2.59,-.573,6.09,-2.18,-.53,6.41,['#6c5548','#534849','#b09f85']);
+  for (const [x,y,z] of pieces) emptyDesk(x,y,z,level);
+  if (level === 2) {
+    const growth = damagePhase(), pulse = omenPower();
+    for (const [x,,z] of pieces.filter(part=>part[0]>0)) {
+      const breath = reducedMotion ? 0 : pulse*Math.sin(time*2+z)*.11;
+      growthLine([[x+.55,-1.27,z+.63],[x+.37,-.76+breath,z+.42],[x-.27,-.56+breath,z+.17]],'#7b5c78',3,growth);
+      if (growth > .58) shelfFungus([x+.43,-.55+breath,z+.29],.14+pulse*.035,time,true);
+    }
+  }
+}
+function ceilingFixtures(level,opening,time) {
+  if (opening > .78) return;
+  const omen = omenPower();
+  for (const [i,z] of [3.29,5.12,6.29].entries()) {
+    const x = level < 3 ? 0 : (i%2 ? 1 : -1)*1.55;
+    const y = 2.015+opening*8.3-(level >= 2 && i === 0 ? .22 : 0);
+    const swing = level >= 2 && i === 0 && !reducedMotion ? Math.sin(time*1.4)*.09 : 0;
+    const casing = [[x-1.22,y,z-.14],[x+1.22,y+swing,z-.14],[x+1.22,y+swing,z+.14],[x-1.22,y,z+.14]];
+    shape('#24262a',casing);
+    const lit = (level === 0 && omen < .55) || (level === 1 && i === 2 && omen < .62) ||
+      (level === 2 && i === 1 && omen < .46);
+    for (const offset of [-.065,.056]) {
+      shape(lit ? '#d8d0ab' : '#65555e',[[x-1.12,y-.01,z+offset],[x+1.12,y+swing-.01,z+offset],
+        [x+1.12,y+swing-.01,z+offset+.040],[x-1.12,y-.01,z+offset+.040]]);
+    }
+    if (level >= 2 && i === 0) worldLine('#776471',[x-.75,y,z],[x-.84,y+.25,z+.11],2);
+  }
+}
+function peatHand() {
+  if (run.course !== 3 || reducedMotion) return;
+  const {station,crossing} = run.room;
+  const crossingBeat = crossing ? clamp((run.elapsed-crossing.startedAt-.50)/2.35) : 0;
+  const reach = Math.max(omenPower(),Math.sin(Math.PI*crossingBeat)**2*.94);
+  if (reach < .15) return;
+  const [dx,,dz] = deskOffset();
+  const [x,z] = crossing && station < bridgePlans.length ?
+    bridgeCell(station,Math.min(crossing.path.length,3),2) : [dx+1.62,dz+2.66];
+  const palm = [x+.47,-2.49+reach*1.54,z+.22];
+  const wrist = [palm[0]+.09,palm[1]-.39,palm[2]+.08];
+  limb([palm[0]+.18,-2.82,palm[2]+.32],wrist,.13,.084,'#3d3037','#654f50');
+  limb(wrist,palm,.085,.139,'#54434b','#806865');
+  for (let i=0;i<4;i++) {
+    const base = [palm[0]+(i-1.45)*.078,palm[1],palm[2]+.012*i];
+    const joint = [base[0]+(i-1.5)*.043,base[1]+.21+i*.023,base[2]-.12];
+    const tip = [joint[0]-.045,joint[1]+.089,joint[2]-.16];
+    limb(base,joint,.038,.027,'#665354','#917a70');
+    limb(joint,tip,.026,.007,'#665354','#9d8675');
+  }
+}
+function roomShadows(level,time) {
+  const omen = omenPower(), w = canvas.width, h = canvas.height;
+  const dim = level ? [0,.040,.065,.10,.13][level] : 0;
+  const alpha = dim+omen*(reducedMotion ? .035 : .05+level*.020);
+  if (!alpha) return;
+  const shadow = ctx.createLinearGradient(0,0,w*.20,h);
+  shadow.addColorStop(0,`rgba(10,9,23,${Math.min(.47,alpha*1.64)})`);
+  shadow.addColorStop(.62,`rgba(12,13,22,${alpha*.8})`);
+  shadow.addColorStop(1,`rgba(12,13,22,${alpha*.34})`);
+  ctx.fillStyle = shadow;
+  ctx.fillRect(0,0,w,h);
+  if (level === 4 && omen > .49 && !reducedMotion) {
+    const y = h*(.47+.18*Math.sin(time*1.7)), center = w*(.57+Math.sin(time*.47)*.08);
+    screenPoly('#17122626',[[center-w*.43,0],[center+w*.12,0],[center+w*.32,y],[center-w*.21,y+h*.06]]);
   }
 }

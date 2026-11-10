@@ -4,7 +4,7 @@ A first-person exam horror game. Five papers are waiting in Room 013. Look away 
 
 ## Play
 
-Open `index.html` from the downloaded repository in a desktop browser. For one offline file, run `npm run package:web` and open `dist/Night-Final.html`. The single-file build needs Node but no installed packages.
+Play at [Night Final](https://briday1.github.io/night-final/) or open `index.html` from the downloaded repository in a desktop browser. For one offline file, run `npm run package:web` and open `dist/Night-Final.html`. The single-file build needs Node but no installed packages.
 
 - In **Horse Anatomy**, use **W/A/D/S** or the arrow keys to look around. Find the Mare when you hear its approach and keep it in view.
 - Look down and use **1–4** to write an answer. Press **Enter** to advance. You can also use the desk buttons, mouse or touch.
@@ -30,11 +30,4 @@ The questions and syllabus are original wording. `curriculum.js` records referen
 
 ## Art and audio
 
-The classroom geometry, directional camera, moving characters, practical objects, and sound effects render procedurally. The full-room score and effects use Web Audio. The final apparition is a pre-generated AI sprite integrated as `proctor-art.js`. It is the only bitmap character asset, and the game generates no new art while running. See Valve’s [content survey](https://partner.steamgames.com/doc/gettingstarted/contentsurvey) for the pre-generated art disclosure.
-
-<details>
-<summary>Final apparition sprite brief</summary>
-
-Create a production game sprite, isolated on fully transparent alpha, no backdrop at all, for the climactic view UP from a first-person retro pixel horror game. A vast original interpretation of the public-domain cosmic being Cthulhu, facing directly down into the camera at very low angle, centered. Silhouette: old squid-shaped head, eight thick long articulate cephalopod tendrils hanging and curling, an ancient broad winged torso and a pair of enormous tattered batlike wings spanning diagonally toward the top corners. Two small, sharp and intensely warm amber eyes peering down, the left eye has a brass circular monocle with a broken dangling chain as a small visual tell. Distinct stone-like anatomy and ridged shadows, not a human face. Art direction: authentic early 1990s PC adventure-horror sprite, painted using chunky pixel clusters, 16-24 color palette, absolutely no photorealism or smooth CGI, deep dark navy and desaturated teal shadows, pale sea-glass blue edge lights, few deep purple shadows, high readable contrast. Landscape framing 3:2, keep the complete figure and wings within the margins, silhouette with very clean crisp edge, the figure fills frame. A frightening solemn apparition without blood. No lettering, no text, no border, no room or floor, no sky, no cast shadow. Transparent negative space around and between limbs; only the creature.
-
-</details>
+The classroom, creatures, moving characters and practical objects use procedural geometry. The final apparition uses faceted wings, claws and moving tendrils built in `proctor-art.js`. Web Audio plays the score, directional warnings and the sounds of the classroom breaking apart.

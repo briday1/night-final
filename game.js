@@ -114,6 +114,47 @@ function ambience(time) {
   tone(root*2.12,2.4,.066,.4,'sine',root*2.04,.39);
   noise([1300,280,1600,480,800][run.course],3.2,.12,0,0,'lowpass');
 }
+function omenPower() {
+  if (!run.omen) return 0;
+  const progress = clamp((run.elapsed-run.omen.start)/run.omen.duration);
+  return progress > 0 && progress < 1 ? Math.sin(progress*Math.PI)**1.35 : 0;
+}
+function tickOmen() {
+  if (run.elapsed < run.nextOmen) return;
+  const room = run.room;
+  const busy = run.threat || room?.submerged > 0 ||
+    (room?.id === 'abyss' && room.age < room.surgingUntil) ||
+    (room?.crossing && bogWake(room).phase !== 'calm') || room?.circuit?.pull > .65;
+  if (busy) { run.nextOmen = run.elapsed+2.8; return; }
+  const level = run.course;
+  run.omen = {start:run.elapsed,duration:2.5+level*.33};
+  run.nextOmen = run.elapsed+[21,17,14,11,8.6][level]+(run.page%3)*1.5;
+  switch (level) {
+    case 0:
+      tone(118,.65,.092,0,'triangle',73);
+      noise(980,.9,.13,0,.14,'lowpass');
+      break;
+    case 1:
+      tone(63,1.76,.22,-.68,'sine',35);
+      noise(520,1.18,.20,-.62,.23,'lowpass');
+      break;
+    case 2:
+      noise(675,1.72,.20,.55,0,'lowpass');
+      noise(1020,.73,.21,.39,.96,'bandpass');
+      tone(91,1.54,.13,.63,'sine',72,.31);
+      break;
+    case 3:
+      noise(410,1.05,.31,.38,0,'lowpass');
+      tone(72,1.4,.21,.27,'triangle',33);
+      noise(238,.30,.23,.55,.47,'lowpass');
+      break;
+    case 4:
+      tone(59,2.5,.23,-.44,'sine',38);
+      tone(61,2.5,.19,.44,'sine',39);
+      noise(720,1.64,.21,0,.48,'lowpass');
+      break;
+  }
+}
 const mareApproaches = [
   {view:'front',pan:0,tell:'HALL · A hoof drags against tile.'},
   {view:'left',pan:-.85,tell:'WINDOW · A hoof hits the sill.'},
@@ -133,7 +174,7 @@ function showPanel(html,screen) {
   $('panel').querySelector('button')?.focus({preventScroll:true});
 }
 function title() {
-  Object.assign(run,{mode:'title',course:0,view:'front',elapsed:0,trial:null,threat:null,retreat:null,cinematic:null,shift:null,room:null});
+  Object.assign(run,{mode:'title',course:0,view:'front',elapsed:0,trial:null,threat:null,retreat:null,cinematic:null,shift:null,room:null,omen:null});
   Object.assign(camera,{yaw:-.29,pitch:.025,x:0,y:0,z:0,lean:0,walking:0,roll:0});
   $('caption').hidden = true;
   showPanel(`<div class="title-number">ROOM 013 <span aria-hidden="true">///</span> 23:42</div>
@@ -168,7 +209,7 @@ function start() {
   Object.assign(run,{mode:'running',course:0,page:0,elapsed:0,remaining:examTime,courseAge:0,
     view:'front',health:3,pending:0,answers:courses.map(c => Array(c.questions.length).fill(null)),
     exam:makeExam(),misses:0,grades:[],trial:null,threat:null,retreat:null,nextThreat:8.8,mareRoute:0,
-    hitUntil:0,notice:'',noticeUntil:0,shift:null,cinematic:null,room:null,loss:''});
+    hitUntil:0,notice:'',noticeUntil:0,shift:null,cinematic:null,room:null,omen:null,nextOmen:14.5,loss:''});
   Object.assign(camera,{yaw:0,pitch:0,x:0,y:0,z:0,lean:0,walking:0,roll:0});
   lastPaper = '';
   ambientDue = 0;
@@ -272,6 +313,7 @@ const orreryTarget = [.51,.51,.105];
 function startPractical() {
   const spec = course().practical;
   run.mode = 'practical';
+  run.omen = null;
   run.view = spec.view;
   run.threat = null;
   run.retreat = null;
@@ -419,6 +461,7 @@ function tickShift(dt) {
   run.misses = 0;
   run.health = Math.min(3,run.health+1);
   run.nextThreat = run.elapsed + 8.4;
+  run.nextOmen = run.elapsed+Math.max(4.3,8.5-run.course*.87);
   $('caption').hidden = true;
   prepareQuestion();
   notice(course().intro,5.1);
@@ -442,7 +485,11 @@ function tickEnding(dt) {
     write($('caption'),line);
     tone(hz,beat === 1 ? 3.2 : 1.4,.61,0,'sawtooth',hz*.61);
     noise(beat === 1 ? 650 : 300,beat === 1 ? 2.9 : 1.6,.7,0,0,'lowpass');
-    if (beat === 1) for (let i=0;i<5;i++) noise(230+i*70,.63,.38,i*.39-.78,i*.27,'lowpass');
+    if (beat === 1) {
+      for (let i=0;i<5;i++) noise(230+i*70,.63,.38,i*.39-.78,i*.27,'lowpass');
+      tone(48,3.6,.28,-.25,'sine',31,1.02);
+      tone(51,3.4,.21,.25,'sine',32,1.08);
+    }
   }
   if (shot.time >= 14.1) finish('clear');
 }
@@ -712,7 +759,10 @@ function frame(now) {
     run.elapsed += dt;
     run.remaining = Math.max(0,examTime-run.elapsed);
     if (!run.remaining) finish('time');
-    else if (run.mode === 'running') tickExam(dt);
+    else if (run.mode === 'running') {
+      tickExam(dt);
+      if (run.mode === 'running') tickOmen();
+    }
     else tickPractical(dt);
     ambience(run.elapsed);
   } else if (run.mode === 'shift') tickShift(dt);
@@ -732,7 +782,8 @@ function frame(now) {
         Math.sin(run.cinematic.time*28)*.027 : 0;
   }
   const readingFocal = run.room?.circuit ? Math.min(198,canvas.width*.59) : Math.min(224,canvas.width*.66);
-  focal = mix(mix(267,readingFocal,camera.lean),Math.min(207,canvas.width*.72),camera.walking);
+  const roomFocal = run.mode === 'ending' ? 267 : Math.min(267,canvas.width*.96);
+  focal = mix(mix(roomFocal,readingFocal,camera.lean),Math.min(207,canvas.width*.72),camera.walking);
   renderUI();
   renderScene(now/1000);
   requestAnimationFrame(frame);
