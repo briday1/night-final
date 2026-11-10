@@ -1,0 +1,19 @@
+{
+  "name": "night-final",
+  "productName": "Night Final",
+  "version": "0.1.0",
+  "private": true,
+  "description": "First-person exam horror",
+  "main": "desktop.cjs",
+  "scripts": {
+    "start": "electron .",
+    "check": "node --check curriculum.js && node --check proctor-art.js && node --check game.js && node --check scene.js && node --check desktop.cjs",
+    "package:web": "node tools/build.mjs web",
+    "package:win": "node tools/build.mjs win"
+  },
+  "engines": { "node": ">=22.12.0" },
+  "devDependencies": {
+    "@electron/packager": "20.3.0",
+    "electron": "45.2.3"
+  }
+}

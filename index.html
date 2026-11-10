@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self' blob:; object-src 'none'; base-uri 'none'">
+<title>Night Final</title>
+<style>
+:root{color-scheme:dark;--mono:"Courier New",ui-monospace,monospace;--ink:#ece4d1;--muted:#b0a79a;--gold:#dfb47c}
+*{box-sizing:border-box}
+body{margin:0;background:#08090b;color:var(--ink);font:16px/1.45 var(--mono);user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+button{font:inherit;cursor:pointer;touch-action:manipulation}
+button:disabled{cursor:default}
+button:focus-visible,a:focus-visible{outline:2px solid #ffdc9f;outline-offset:4px}
+[hidden]{display:none!important}
+#stage{position:relative;height:100svh;min-height:360px;overflow:hidden;isolation:isolate;--course:#dfb47c}
+#room{position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated;touch-action:none;background:#0e1014}
+.vignette{position:absolute;inset:0;z-index:1;pointer-events:none;box-shadow:inset 0 0 14vw 1.6vw #0008;background:repeating-linear-gradient(0deg,transparent 0 3px,#0002 4px 5px)}
+#stage.hit .vignette{background:#7b211e70}
+#stage[data-defense] .vignette{box-shadow:inset 0 0 9vw 1.2vw color-mix(in srgb,var(--course),transparent 75%)}
+.utility,.hud,.look-controls,.cue,.trial,.caption{position:absolute;z-index:3}
+.utility{top:12px;right:14px;display:flex;gap:6px;z-index:6}
+.utility button,.look-controls button,.target,.panel button{border:1px solid #6f675c;border-bottom:3px solid #3a342f;border-radius:0;background:#101216eb;color:#f2e8d7;font-weight:700;text-transform:uppercase;font-size:12px;padding:7px 11px;min-height:39px}
+.utility button:hover,.look-controls button:not(:disabled):hover,.target:hover,.panel button:hover{background:#302a26}
+.utility button[aria-pressed=true],.look-controls button[aria-pressed=true]{color:var(--course);border-color:var(--course)}
+.hud{top:12px;left:14px;max-width:calc(100% - 177px);display:flex;flex-wrap:wrap;gap:4px;color:#f0e4d0;text-transform:uppercase;font-size:12px;font-weight:bold;pointer-events:none}
+.hud span{padding:6px 8px;background:#0d1014e9;border-bottom:2px solid #4c433a}
+.hud .course{color:var(--course);letter-spacing:.06em}
+.hud .clock{color:#ffc487}
+.hud .danger,.hud .clock.low{color:#ffaaa0;border-color:#b0574d}
+.look-controls{bottom:15px;left:50%;transform:translateX(-50%);display:flex;align-items:center;justify-content:center;gap:5px;width:max-content;max-width:calc(100% - 16px)}
+.look-controls button{min-width:70px}
+.look-controls button[data-alert]{color:#ffe5c2;border-color:#d88f78;box-shadow:inset 0 0 0 1px #84493e}
+.look-controls button:disabled{opacity:.55}
+.look-controls #act{position:absolute;right:0;bottom:49px;min-height:45px;background:#23211e;border-color:var(--course);color:var(--course);touch-action:none}
+.look-controls #act[data-held]{background:#57443c;color:#fff6e9}
+.cue,.caption,.trial{text-align:center;left:50%;transform:translateX(-50%);width:max-content;max-width:min(88%,650px);pointer-events:none}
+.cue{top:70px;padding:5px 9px;background:#0c1017dd;margin:0;border-left:2px solid var(--course);font-size:14px;color:#ffdbc0}
+.cue:empty{display:none}
+.caption{z-index:4;bottom:12%;margin:0;padding:10px 15px;background:#06090ce8;border-bottom:2px solid var(--course);font-size:clamp(15px,2.2vw,24px);color:#f3e1cb}
+.trial{top:75px;color:#eee3d5;text-shadow:2px 2px #0b0b11;font-size:14px}
+.trial strong{display:inline-block;padding:4px 9px;border:1px solid #746852;background:#121319f2;color:var(--course);text-transform:uppercase;letter-spacing:.14em}
+.trial p{margin:6px auto;max-width:510px;padding:4px 8px;background:#0b0d11c9}
+#trial-score{color:var(--course);font-weight:bold;font-size:13px}
+.target{position:absolute;z-index:3;transform:translate(-50%,-50%);min-width:48px;min-height:48px;padding:5px;border:1px solid #a59d82;background:#11101835;text-shadow:1px 2px #161013;touch-action:none}
+.target[data-lit],.target[data-held]{color:#ffe5ac;background:#86704a75;box-shadow:inset 0 0 0 2px #ffe3a1;border-color:#f9d391}
+.target[data-ready]{background:#374737;border-color:#b2d9aa}
+.target:disabled{opacity:.56}
+#stage[data-trial=beam] #room,#stage[data-trial=orrery] #room{cursor:crosshair}
+#stage[data-trial=breath] .target{min-width:112px}
+.paper{position:absolute;top:0;left:0;transform-origin:0 0;z-index:2;width:540px;height:464px;
+  display:flex;flex-direction:column;padding:26px 32px 22px;color:#2b2725;
+  background:repeating-linear-gradient(0deg,#754c4221 0 1px,transparent 1px 24px),#e0cead;
+  border:2px solid #8e7757;box-shadow:inset 0 0 0 4px #ccb793;
+  color-scheme:light;font:18px/1.25 var(--mono)}
+.paper[inert]{pointer-events:none}
+.paper-head{display:flex;justify-content:space-between;gap:10px;border-bottom:2px solid #876957;padding-bottom:6px;font-weight:bold;text-transform:uppercase;font-size:15px;color:#6e423e}
+.paper .note{font-size:14px;margin:5px 0 0;color:#71564c}
+.paper h2{font:700 22px/1.17 var(--mono);margin:14px 0 8px}
+.paper .plate{display:grid;place-items:center;background:#bba68424;height:89px;flex:none;border-bottom:1px solid #ae9175}
+.plate svg{display:block;height:85px;width:100%;shape-rendering:geometricPrecision}
+.plate .ink{fill:#ad9273;stroke:#624b45;stroke-width:2}.plate .bone{fill:#b49b7d;stroke:#6f544a;stroke-width:2}
+.plate .mane{fill:#735347;stroke:#5c433b;stroke-width:1.5}.plate .coat-light{fill:#ceb28b;stroke:#a58366;stroke-width:1.5}
+.plate .detail{fill:none;stroke:#7b5b4d;stroke-width:2}.plate text{fill:#785749;text-anchor:middle;font:10px var(--mono)}
+.paper .answers{display:grid;align-content:center;gap:2px;flex:1}
+.paper button{font:700 17px/1.17 var(--mono);border:0;border-radius:0;color:inherit;background:none;min-height:37px;text-align:left}
+.paper button:focus-visible{outline:2px dashed #734630;outline-offset:1px}
+.paper .answers button{position:relative;padding:6px 28px 6px 7px;border-bottom:1px dashed #a48770}
+.paper:has(.plate:not([hidden])) .answers button{min-height:33px;padding-block:4px}
+.paper button:not(:disabled):hover{background:#aa72582b}
+.paper button[data-mark=right]{color:#244a32;background:#b5c69a}
+.paper button[data-mark=wrong]{color:#862f30;background:#cc9981;text-decoration:line-through;text-decoration-thickness:2px}
+.paper button[data-mark]::after{position:absolute;right:7px;top:50%;transform:translateY(-50%);text-decoration:none}
+.paper button[data-mark=right]::after{content:'✓'}
+.paper button[data-mark=wrong]::after{content:'×'}
+.paper button[data-mark=key]{color:#31583f}
+.paper-foot{display:flex;align-items:center;gap:7px;min-height:46px;border-top:2px solid #9a805f;margin-top:5px}
+.paper-foot span{flex:1;font-weight:bold;font-size:15px;color:#613c39}
+.paper-foot button{padding:7px 10px;border-bottom:2px solid #304031;background:#324b39;color:#fff4d8;text-align:center}
+.paper-foot button:disabled{opacity:.35}
+.paper progress{appearance:none;border:0;width:100%;height:5px;background:#b8a37f;accent-color:#824238}
+.paper progress::-webkit-progress-bar{background:#b8a37f}
+.paper progress::-webkit-progress-value{background:#824238}
+.paper progress::-moz-progress-bar{background:#824238}
+.overlay{position:absolute;inset:0;z-index:5;display:grid;place-items:center;overflow:auto;padding:60px 24px 30px;background:#080a0ce6}
+.panel{width:min(100%,610px);padding:clamp(18px,4vw,36px);border:1px solid #89776b;border-left:4px solid #b19175;background:#12141aea;box-shadow:7px 7px #030407;color:#ece4d3}
+.panel .eyebrow{color:#ccab8b;text-transform:uppercase;letter-spacing:.14em;font-size:12px;font-weight:bold}
+.panel h1{margin:8px 0 14px;font:900 clamp(25px,5vw,48px)/1 var(--mono);text-transform:uppercase;letter-spacing:-.08em}
+.panel p,.panel li{margin:8px 0 13px}
+.panel a{color:#edd0a1}
+.panel button{margin-top:8px}
+.panel .primary{background:#c9a17c;border-color:#e5b990;color:#17121a;box-shadow:inset 0 -3px #956b52}
+.panel .primary:hover{background:#ebc3a0}
+.overlay[data-screen=title]{place-items:center start;padding:clamp(22px,7vw,108px);background:linear-gradient(90deg,#07080bf7 0%,#07080bed 26%,#07080b8a 52%,#07080b16 88%)}
+.overlay[data-screen=title] .panel{border:0;background:none;box-shadow:none;padding:0}
+.title-number{color:#ebac84;font-weight:bold;letter-spacing:.24em}
+.panel .wordmark{font:900 clamp(52px,10vw,160px)/.80 var(--mono);letter-spacing:-.115em;margin:24px 0 26px;color:#f0dec6;text-shadow:4px 6px #472b38}
+.title-copy{color:#d1bbaa;max-width:340px;font-size:15px}
+.title-actions{display:grid;gap:6px;width:min(100%,260px);margin-top:26px}
+.title-actions button{text-align:left}
+.title-footer{margin-top:24px;font-size:11px;color:#b9a8aa;letter-spacing:.16em}
+.notes{max-height:56svh;overflow:auto;padding-right:8px}
+.notes h2{color:var(--gold);font-size:16px}
+.notes details{border-top:1px solid #51473f;padding:7px 0;font-size:13px}
+.notes summary{cursor:pointer;color:#ecd1a6;font-weight:bold}
+.gradebook{list-style:none;margin:0;padding:0;font-size:14px}
+.gradebook li{display:flex;justify-content:space-between;gap:10px;border-bottom:1px solid #5a4946;padding:5px 0;margin:0}
+.gradebook strong{color:#efc09d}
+#stage:not(.in-run) .hud,#stage:not(.in-run) .look-controls,#stage:not(.in-run) #pause{display:none}
+#stage.cinema .utility,#stage.cinema .hud{display:none}
+#stage[data-view=desk] .look-controls button{background:#151318f5}
+@media(max-width:650px){
+  .utility{top:7px;right:7px;gap:3px}.utility button{padding:5px 6px;font-size:10px;min-height:34px}
+  .hud{top:7px;left:7px;max-width:calc(100% - 120px);font-size:10px}.hud span{padding:4px 6px}
+  .look-controls{bottom:9px;gap:3px}.look-controls button{min-width:0;padding:5px 7px;font-size:11px;min-height:39px}
+  .cue{top:85px;font-size:12px}.trial{top:84px;font-size:12px}.trial p{line-height:1.25}.trial strong{font-size:12px}
+  .overlay[data-screen=title]{background:linear-gradient(180deg,#07080be8,#07080b36 64%,#07080be6);place-items:center}
+}
+@media(max-height:510px){
+  .utility,.hud{top:5px}.cue,.trial{top:54px}.trial p{margin:3px 0}.panel .wordmark{font-size:clamp(45px,12vh,100px)}
+  .overlay{padding-top:42px}.overlay[data-screen=title]{padding:22px 7vw}
+}
+@media(prefers-reduced-motion:reduce){.vignette{background:none}#stage.hit .vignette{background:#68241f40}}
+</style>
+</head>
+<body>
+<main id="stage">
+  <canvas id="room" width="576" height="324" aria-label="First-person view of the exam room"></canvas>
+  <div class="vignette"></div>
+  <div class="hud" aria-label="Exam status">
+    <span class="course" id="course"></span><span class="clock" id="clock"></span><span id="marks"></span><span id="misses"></span><span id="nerve"></span>
+  </div>
+  <div class="utility"><button id="sound" type="button" aria-pressed="true">Sound on</button><button id="pause" type="button">Pause</button></div>
+  <section class="paper" id="paper" aria-label="Exam paper" hidden>
+    <div class="paper-head"><span id="packet"></span><span id="item"></span></div>
+    <p class="note" id="paper-note">One mark per question.</p>
+    <h2 id="question"></h2>
+    <div id="plate" class="plate" hidden></div>
+    <div class="answers" id="answers"></div>
+    <div class="paper-foot"><span id="paper-status" role="status"></span><button id="next" type="button">Next</button></div>
+    <progress id="writing" max="1" value="0" aria-label="Writing progress"></progress>
+  </section>
+  <p class="cue" id="cue" role="status"></p>
+  <nav class="look-controls" id="controls" aria-label="Look controls">
+    <button type="button" data-view="left">← Window</button>
+    <button type="button" data-view="front">↑ Hall</button>
+    <button type="button" data-view="right">→ Wall</button>
+    <button type="button" data-view="up">Q Ceiling</button>
+    <button type="button" data-view="desk">↓ Desk</button>
+    <button type="button" id="act" hidden>Hold · E</button>
+  </nav>
+  <section class="trial" id="trial" aria-label="Practical exam" hidden>
+    <strong id="trial-title"></strong><p id="trial-brief"></p><p id="trial-score" role="status"></p>
+  </section>
+  <div id="targets"><button type="button" class="target" hidden></button><button type="button" class="target" hidden></button><button type="button" class="target" hidden></button></div>
+  <p class="caption" id="caption" role="status" hidden></p>
+  <div class="overlay" id="overlay"><section class="panel" id="panel"></section></div>
+</main>
+<script src="curriculum.js"></script>
+<script src="proctor-art.js"></script>
+<script src="game.js"></script>
+<script src="scene.js"></script>
+</body>
+</html>

@@ -1,0 +1,44 @@
+name: Windows playtest build
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install packaging tools
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Check and package
+        run: |
+          npm run check
+          npm run package:web
+          npm run package:win
+      - name: Launch the packaged renderer
+        shell: pwsh
+        run: |
+          $exe = (Get-ChildItem dist -Filter 'Night Final.exe' -Recurse | Select-Object -First 1).FullName
+          if (-not $exe) { throw 'Windows executable missing' }
+          $game = Start-Process -FilePath $exe -ArgumentList '--smoke-test' -PassThru
+          if (-not $game.WaitForExit(25000)) { $game.Kill(); throw 'Game launch timed out' }
+          if ($game.ExitCode -ne 0) { throw "Game returned $($game.ExitCode)" }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Night-Final-Windows-x64
+          path: dist/*-win32-x64/
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Night-Final-Browser
+          path: dist/Night-Final.html
+          if-no-files-found: error
